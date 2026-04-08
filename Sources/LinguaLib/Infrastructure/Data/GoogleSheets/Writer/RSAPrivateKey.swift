@@ -6,7 +6,7 @@ import Security
 /// Parses a PEM-encoded PKCS#8 RSA private key (the format Google service account JSON uses)
 /// and signs payloads using RS256 via the Security framework.
 enum RSAPrivateKey {
-  enum Error: Swift.Error, LocalizedError {
+  enum Error: Swift.Error, LocalizedError, Equatable {
     case invalidPEM
     case invalidDER
     case unsupportedPlatform

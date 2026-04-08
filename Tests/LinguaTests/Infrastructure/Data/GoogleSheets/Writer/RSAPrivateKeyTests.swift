@@ -75,18 +75,3 @@ final class RSAPrivateKeyTests: XCTestCase {
     XCTAssertEqual(RSAPrivateKey.Error.signingFailed("boom").errorDescription, "RSA signing failed: boom")
   }
 }
-
-extension RSAPrivateKey.Error: Equatable {
-  public static func == (lhs: RSAPrivateKey.Error, rhs: RSAPrivateKey.Error) -> Bool {
-    switch (lhs, rhs) {
-    case (.invalidPEM, .invalidPEM),
-         (.invalidDER, .invalidDER),
-         (.unsupportedPlatform, .unsupportedPlatform):
-      return true
-    case let (.signingFailed(a), .signingFailed(b)):
-      return a == b
-    default:
-      return false
-    }
-  }
-}
