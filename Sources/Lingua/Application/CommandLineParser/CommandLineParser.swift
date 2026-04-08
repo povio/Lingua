@@ -103,7 +103,9 @@ private extension CommandLineParser {
     try validateArgumentCount(arguments, count: 2)
     guard let sub = Command(rawValue: arguments[2].lowercased()),
           [.install, .uninstall, .status].contains(sub) else {
-      throw CommandLineParsingError.invalidCommand
+      throw CommandLineParsingError.invalidUsage(
+        "Unknown ai subcommand. Usage: lingua ai install|uninstall|status [--target claude|cursor|both] [--global] [--force]"
+      )
     }
     var booleanFlags: Set<String> = []
     var flags: [String: String] = [:]
@@ -113,18 +115,28 @@ private extension CommandLineParser {
     while i < tokens.count {
       let token = tokens[i]
       guard token.hasPrefix("--") else {
-        i += 1
-        continue
+        // Unknown positional. Most likely the user typed `lingua ai install cursor` meaning
+        // `--target cursor` — reject loudly instead of silently ignoring it.
+        if ["claude", "cursor", "both"].contains(token.lowercased()) {
+          throw CommandLineParsingError.invalidUsage(
+            "Did you mean '--target \(token.lowercased())'? Usage: lingua ai \(sub.rawValue) [--target claude|cursor|both] [--global] [--force]"
+          )
+        }
+        throw CommandLineParsingError.invalidUsage(
+          "Unexpected argument '\(token)'. Usage: lingua ai \(sub.rawValue) [--target claude|cursor|both] [--global] [--force]"
+        )
       }
       let name = String(token.dropFirst(2))
       // Keyed flags consume the next token as their value.
       if name == "target" {
         guard i + 1 < tokens.count, !tokens[i + 1].hasPrefix("--") else {
-          throw CommandLineParsingError.invalidCommand
+          throw CommandLineParsingError.invalidUsage("--target requires a value (claude, cursor, or both).")
         }
         let value = tokens[i + 1].lowercased()
         guard ["claude", "cursor", "both"].contains(value) else {
-          throw CommandLineParsingError.invalidCommand
+          throw CommandLineParsingError.invalidUsage(
+            "Invalid --target '\(tokens[i + 1])'. Must be one of: claude, cursor, both."
+          )
         }
         flags[name] = value
         i += 2

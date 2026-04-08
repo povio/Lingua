@@ -51,7 +51,7 @@ final class SkillInstallerTests: XCTestCase {
 
   // MARK: - Cursor target
 
-  func test_install_cursor_writesFlatMdcFiles() throws {
+  func test_install_cursor_writesNestedSkillFiles() throws {
     let tempDir = makeTempDir()
     let installer = SkillInstaller()
     try withCwd(tempDir) {
@@ -59,26 +59,28 @@ final class SkillInstallerTests: XCTestCase {
       XCTAssertEqual(Set(result.installed), Set(BundledSkills.all.map(\.name)))
     }
 
-    let rulesDir = tempDir.appendingPathComponent(".cursor").appendingPathComponent("rules")
+    // Cursor 2.4+ uses the same Agent Skills layout as Claude: <dir>/<name>/SKILL.md
     for skill in BundledSkills.all {
-      let path = rulesDir.appendingPathComponent("\(skill.name).mdc")
-      XCTAssertTrue(FileManager.default.fileExists(atPath: path.path), "Missing rule: \(skill.name).mdc")
-      // No nested SKILL.md directory should exist for Cursor.
-      let nested = rulesDir.appendingPathComponent(skill.name).appendingPathComponent("SKILL.md")
-      XCTAssertFalse(FileManager.default.fileExists(atPath: nested.path))
+      let path = tempDir
+        .appendingPathComponent(".cursor")
+        .appendingPathComponent("skills")
+        .appendingPathComponent(skill.name)
+        .appendingPathComponent("SKILL.md")
+      XCTAssertTrue(FileManager.default.fileExists(atPath: path.path), "Missing skill: \(skill.name)")
     }
   }
 
-  func test_install_cursor_globalThrowsCursorNoGlobal() throws {
+  func test_install_cursor_isIdempotentWithoutForce() throws {
+    let tempDir = makeTempDir()
     let installer = SkillInstaller()
-    XCTAssertThrowsError(try installer.install(scope: .global, target: .cursor, force: false)) { error in
-      // Wrapped in AgentError with code "cursor_no_global".
-      let mirror = String(describing: error)
-      XCTAssertTrue(mirror.contains("cursor_no_global"), "Expected cursor_no_global error, got \(mirror)")
+    try withCwd(tempDir) {
+      _ = try installer.install(scope: .project, target: .cursor, force: false)
+      let second = try installer.install(scope: .project, target: .cursor, force: false)
+      XCTAssertTrue(second.installed.isEmpty)
     }
   }
 
-  func test_uninstall_cursor_removesOnlyMdcFiles() throws {
+  func test_uninstall_cursor_removesAllSubdirectories() throws {
     let tempDir = makeTempDir()
     let installer = SkillInstaller()
     try withCwd(tempDir) {
@@ -86,9 +88,12 @@ final class SkillInstallerTests: XCTestCase {
       let removed = try installer.uninstall(scope: .project, target: .cursor)
       XCTAssertEqual(Set(removed.installed), Set(BundledSkills.all.map(\.name)))
     }
-    let rulesDir = tempDir.appendingPathComponent(".cursor").appendingPathComponent("rules")
-    let contents = (try? FileManager.default.contentsOfDirectory(at: rulesDir, includingPropertiesForKeys: nil)) ?? []
-    XCTAssertTrue(contents.isEmpty)
+
+    let skillsDir = tempDir.appendingPathComponent(".cursor").appendingPathComponent("skills")
+    if FileManager.default.fileExists(atPath: skillsDir.path) {
+      let contents = try FileManager.default.contentsOfDirectory(at: skillsDir, includingPropertiesForKeys: nil)
+      XCTAssertTrue(contents.isEmpty)
+    }
   }
 
   // MARK: - Auto-detection

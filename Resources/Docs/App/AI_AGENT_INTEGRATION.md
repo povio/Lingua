@@ -17,14 +17,16 @@ Distribution constraint: Lingua ships via **Homebrew** and the **Mac App Store**
 **not** clone the Lingua repo. Everything below has to be reachable from a `brew install`
 (or App Store) install — no repo clone, no extra package, no separate server process.
 
-Chosen approach: **Skills (Claude Code) + Rules (Cursor)**. The same markdown bodies are
-embedded inside the Lingua binary as Swift string literals (no Package.swift resources to wire)
-and extracted on demand by `lingua ai install`. For Claude Code they're written as
-`.claude/skills/lingua-*/SKILL.md`; for Cursor they're rewrapped with Cursor's MDC frontmatter
-(`description` / `globs` / `alwaysApply`) and written flat as `.cursor/rules/lingua-*.mdc`. The
-installer auto-detects which target(s) the project already uses, so the same command (`lingua
-ai install`) works in both editors. The agent then drives Lingua through the same set of
-agent-friendly subcommands regardless of which editor it's running in.
+Chosen approach: **Agent Skills**, the open standard now implemented by both Claude Code and
+Cursor 2.4+. The skill bodies are embedded inside the Lingua binary as Swift string literals
+(no Package.swift resources to wire) and extracted on demand by `lingua ai install`. Both
+targets use the exact same on-disk format — `<dir>/<skill-name>/SKILL.md` with `name` +
+`description` YAML frontmatter — so we ship a single canonical body per skill and write it
+verbatim to whichever target the user picks (`.claude/skills/` or `.cursor/skills/`, project or
+global). The installer auto-detects which target(s) the user has based on existing `.claude/`
+/ `.cursor/` directories, so the same command (`lingua ai install`) works in both editors. The
+agent then drives Lingua through the same set of agent-friendly subcommands regardless of
+which editor it's running in.
 
 ---
 
@@ -35,10 +37,11 @@ Three layers, smallest to largest:
 1. **CLI extensions** — new agent-friendly subcommands on the existing `lingua` binary. Read &
    write Google Sheets in a **section-aware** way that preserves blank separator rows.
 2. **Bundled skill files** — markdown skill bodies embedded in the binary, installed by
-   `lingua ai install` into either `.claude/skills/lingua-*/SKILL.md` (Claude Code) or
-   `.cursor/rules/lingua-*.mdc` (Cursor), or both. Auto-detected from the cwd by default;
-   overridable via `--target claude|cursor|both`. `--global` is Claude-only — Cursor has no
-   global rules directory.
+   `lingua ai install` into `.claude/skills/lingua-*/SKILL.md` (Claude Code) and/or
+   `.cursor/skills/lingua-*/SKILL.md` (Cursor). Both targets share the same on-disk format
+   (the Agent Skills standard). Auto-detected from `.claude/` / `.cursor/` directories by
+   default; overridable via `--target claude|cursor|both`. Both targets support `--global`,
+   writing to `~/.claude/skills/` and `~/.cursor/skills/` respectively.
 3. **Docs** — README section + the [end-user setup guide](AI_AGENT_USAGE.md).
 
 ---
@@ -66,9 +69,9 @@ New cases in `Sources/LinguaLib/Domain/Entities/Command.swift`, parsed by
 | `lingua delete <config> --section <s> --key <k>` | Delete a row from every language tab where it exists. Recovery escape hatch — works on misaligned tabs. |
 | `lingua sync <config> --platform ios\|android` | Same as today's `lingua ios` / `lingua android` but with structured JSON status output. The old commands remain as aliases. |
 | `lingua doctor <config>` | Verifies config, API key, service account, sheet reachability, output dirs writable, all language tabs aligned. Exits non-zero if any check fails. |
-| `lingua ai install [--target claude\|cursor\|both] [--global] [--force]` | Extracts bundled instructions into `.claude/skills/lingua-*/` (Claude Code) and/or `.cursor/rules/lingua-*.mdc` (Cursor). Default target is auto-detected from `.claude/` / `.cursor/` in the cwd. |
-| `lingua ai uninstall [--target claude\|cursor\|both] [--global]` | Removes installed skills/rules. |
-| `lingua ai status` | Shows what's installed and where, for both Claude Code (project + global) and Cursor (project). |
+| `lingua ai install [--target claude\|cursor\|both] [--global] [--force]` | Extracts bundled Agent Skills into `.claude/skills/lingua-*/SKILL.md` (Claude Code) and/or `.cursor/skills/lingua-*/SKILL.md` (Cursor). Default target is auto-detected from `.claude/` / `.cursor/` directories — cwd for project scope, `~` for `--global`. |
+| `lingua ai uninstall [--target claude\|cursor\|both] [--global]` | Removes installed skills. |
+| `lingua ai status` | Shows what's installed and where, across all four target × scope combinations (Claude project / global, Cursor project / global). |
 | `lingua help` (also `--help`, `-h`, or bare `lingua`) | Prints usage. |
 
 ### Section-aware insertion (the important part)
@@ -271,31 +274,25 @@ them to disk on `lingua ai install`.
 
 ### Multi-target install (Claude Code + Cursor)
 
-The same five skill bodies are installable in two formats. `SkillInstaller.Target` distinguishes
-them:
+Both Claude Code and Cursor 2.4+ implement the same Agent Skills standard, so the same skill
+body is written verbatim to whichever target the user picks. `SkillInstaller.Target` only
+distinguishes the parent directory:
 
-| Target | Path | Frontmatter |
-|---|---|---|
-| `.claudeCode` | `<scope>/.claude/skills/<name>/SKILL.md` | `name`, `description` (Claude Code skill format) |
-| `.cursor`     | `<scope>/.cursor/rules/<name>.mdc` (flat) | `description`, `globs`, `alwaysApply` (Cursor MDC) |
-
-`BundledSkills.Skill` carries two extra fields per skill — `cursorDescription` and
-`cursorGlobs` — used only by `CursorRuleFormatter.mdc(for:)` to re-wrap the markdown body in
-Cursor frontmatter. The editing-flow skills (`add` / `update` / `find`) ship with file globs
-covering Swift, Kotlin, TSX/JSX, and Dart so Cursor auto-attaches them when the user is editing
-UI code; `regenerate` and `doctor` ship with empty globs and rely on Cursor's "Agent Requested"
-mode (description match) instead.
+| Target × Scope | Path |
+|---|---|
+| `.claudeCode` + `.project` | `./.claude/skills/<name>/SKILL.md` |
+| `.claudeCode` + `.global`  | `~/.claude/skills/<name>/SKILL.md` |
+| `.cursor` + `.project`     | `./.cursor/skills/<name>/SKILL.md` |
+| `.cursor` + `.global`      | `~/.cursor/skills/<name>/SKILL.md` |
 
 `lingua ai install` resolves the target list in this order:
 
 1. Explicit `--target claude|cursor|both` wins.
-2. Otherwise `SkillInstaller.autoDetectTargets(in: cwd)` checks for `.cursor/` and `.claude/`
+2. Otherwise `SkillInstaller.autoDetectTargets(in: root)` checks for `.cursor/` and `.claude/`
    directories: present-only → that target; both → both; neither → fall back to `[.claudeCode]`
-   so brand-new projects keep the original behavior.
-
-The `--global` scope is Claude-only. `--target cursor --global` (and `--target both --global`)
-fail fast with a `cursor_no_global` `AgentError` because Cursor has no user-scoped rules
-directory — its global rules are configured through the Settings UI instead.
+   so brand-new projects keep the original behavior. The detection root is the cwd for project
+   scope and the user's home directory for `--global` (since `~/.cursor/` and `~/.claude/` are
+   typically present whenever the user has either editor installed).
 
 The install / uninstall envelope reports per-target results plus a flag indicating whether
 auto-detection picked the targets, so callers can tell when they got the default vs an
@@ -306,13 +303,18 @@ explicit choice:
   "ok": true,
   "data": {
     "targets": [
-      { "target": "cursor", "scope": "project", "directory": "/path/.cursor/rules", "installed": [...] },
+      { "target": "cursor", "scope": "project", "directory": "/path/.cursor/skills", "installed": [...] },
       { "target": "claude", "scope": "project", "directory": "/path/.claude/skills", "installed": [...] }
     ],
     "auto_detected": true
   }
 }
 ```
+
+> Cursor also natively reads `.claude/skills/` and `~/.claude/skills/` for compatibility, so
+> a `--target claude` install is already visible to Cursor. The `--target cursor` path exists
+> for users who want their skills explicitly under `.cursor/` (e.g. for a Cursor-only repo, or
+> to keep the two editors' skill sets isolated).
 
 ### The skills
 
@@ -403,11 +405,9 @@ in the App Store target — only the CLI today.)
 - `Processor/LocalizationProcessor.swift` — dispatches new commands to `AgentCommandDispatcher`.
 - `Processor/AgentCommandDispatcher.swift` — agent command dispatch + JSON formatting.
 - `Processor/SkillInstaller.swift` — installs / uninstalls / status of bundled skills, with
-  `Target.claudeCode` / `Target.cursor` and `autoDetectTargets(in:)`.
-- `Processor/BundledSkills.swift` — the five skill bodies as Swift string literals, plus
-  `cursorDescription` and `cursorGlobs` per skill for the Cursor target.
-- `Processor/CursorRuleFormatter.swift` — strips Claude Code frontmatter from a skill body and
-  re-wraps it in Cursor MDC frontmatter (`description`/`globs`/`alwaysApply`).
+  `Target.claudeCode` / `Target.cursor` and `autoDetectTargets(in:)`. Both targets share the
+  same nested `<dir>/<name>/SKILL.md` layout.
+- `Processor/BundledSkills.swift` — the five skill bodies as Swift string literals.
 - `Processor/HelpText.swift` — usage text printed by `lingua help`.
 
 **Tests (`Tests/LinguaTests/`):**
@@ -422,10 +422,7 @@ in the App Store target — only the CLI today.)
 - `Domain/UseCases/Agent/FindAndSectionsTests.swift` — section summaries with blank separator
   rows; find ranking.
 - `Application/Processor/SkillInstallerTests.swift` — Claude Code + Cursor install /
-  idempotency / uninstall, auto-detection across empty / cursor-only / claude-only / both, and
-  the `cursor_no_global` rejection.
-- `Application/Processor/CursorRuleFormatterTests.swift` — frontmatter shape, body
-  preservation, globs-omission for skills with no globs.
+  idempotency / uninstall, auto-detection across empty / cursor-only / claude-only / both.
 
 ---
 

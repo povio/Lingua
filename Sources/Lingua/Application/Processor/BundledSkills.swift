@@ -5,68 +5,21 @@ import Foundation
 /// Package.swift wiring, and they survive whatever distribution path Lingua takes (Homebrew,
 /// Mac App Store, GitHub release).
 ///
-/// Each skill carries two sets of metadata:
-/// - `contents` is the original Claude Code SKILL.md (frontmatter + body) and is written
-///   verbatim by `lingua ai install` for the Claude Code target.
-/// - `cursorDescription` and `cursorGlobs` describe how the same skill should be exposed as a
-///   Cursor `.mdc` rule. The `CursorRuleFormatter` uses these together with the markdown body
-///   parsed out of `contents` to generate the Cursor-flavored file.
-///
-/// Markdown body is shared across both targets — only the frontmatter and the on-disk layout
-/// differ.
+/// Both Claude Code and Cursor 2.4+ implement the same Agent Skills standard
+/// (`<dir>/<skill-name>/SKILL.md` with `name` + `description` YAML frontmatter), so we ship a
+/// single canonical body per skill and write it verbatim to whichever target the user picks.
 enum BundledSkills {
   struct Skill {
     let name: String
     let contents: String
-    let cursorDescription: String
-    let cursorGlobs: [String]
   }
 
-  /// File globs for the editing-flow skills. When a developer is editing UI code in any of
-  /// these languages, Cursor auto-attaches the rule so the agent has the localization
-  /// workflow available without needing to be told. The non-editing skills (regenerate,
-  /// doctor) leave globs empty and rely on Cursor's "Agent Requested" mode (description match)
-  /// instead.
-  static let editingGlobs: [String] = [
-    "**/*.swift",
-    "**/*.kt",
-    "**/*.kts",
-    "**/*.tsx",
-    "**/*.jsx",
-    "**/*.dart"
-  ]
-
   static let all: [Skill] = [
-    Skill(
-      name: "lingua-add-translation",
-      contents: addTranslation,
-      cursorDescription: "Add a new localized string to the project's Google Sheet via the Lingua CLI; use whenever the user asks for a new user-facing string or you're about to hardcode one.",
-      cursorGlobs: editingGlobs
-    ),
-    Skill(
-      name: "lingua-update-translation",
-      contents: updateTranslation,
-      cursorDescription: "Update an existing localized string in the project's Google Sheet via the Lingua CLI.",
-      cursorGlobs: editingGlobs
-    ),
-    Skill(
-      name: "lingua-find-key",
-      contents: findKey,
-      cursorDescription: "Search the project's Google Sheet for an existing localized key before creating a duplicate.",
-      cursorGlobs: editingGlobs
-    ),
-    Skill(
-      name: "lingua-regenerate",
-      contents: regenerate,
-      cursorDescription: "Regenerate platform localization files from the Google Sheet after sheet edits.",
-      cursorGlobs: []
-    ),
-    Skill(
-      name: "lingua-doctor",
-      contents: doctor,
-      cursorDescription: "Diagnose Lingua configuration / auth / sheet alignment problems.",
-      cursorGlobs: []
-    )
+    Skill(name: "lingua-add-translation",    contents: addTranslation),
+    Skill(name: "lingua-update-translation", contents: updateTranslation),
+    Skill(name: "lingua-find-key",           contents: findKey),
+    Skill(name: "lingua-regenerate",         contents: regenerate),
+    Skill(name: "lingua-doctor",             contents: doctor)
   ]
 
   static let addTranslation = """

@@ -179,9 +179,17 @@ struct AgentCommandDispatcher {
     }
     let installer = SkillInstaller()
     let scope: SkillInstaller.Scope = args.booleanFlags.contains("global") ? .global : .project
+    let isGlobal: Bool = { if case .global = scope { return true } else { return false } }()
 
-    // Resolve targets: explicit --target wins, else auto-detect from cwd.
-    let cwd = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+    // Resolve targets: explicit --target wins, else auto-detect.
+    // For project scope, auto-detection looks at the cwd (where the project's `.cursor/` and
+    // `.claude/` directories live). For global scope, it looks at the user's home directory
+    // (where `~/.cursor/` and `~/.claude/` live — these are typically present whenever the
+    // user has either editor installed).
+    let detectionRoot: URL = isGlobal
+      ? FileManager.default.homeDirectoryForCurrentUser
+      : URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+
     let targets: [SkillInstaller.Target]
     let autoDetected: Bool
     if let raw = args.flags["target"] {
@@ -197,17 +205,8 @@ struct AgentCommandDispatcher {
       }
       autoDetected = false
     } else {
-      targets = SkillInstaller.autoDetectTargets(in: cwd)
+      targets = SkillInstaller.autoDetectTargets(in: detectionRoot)
       autoDetected = true
-    }
-
-    // Reject the unsupported combination early so the user gets a clean error.
-    let isGlobal: Bool = { if case .global = scope { return true } else { return false } }()
-    if isGlobal, targets.contains(.cursor) {
-      throw AgentError(
-        code: "cursor_no_global",
-        message: "Cursor does not support a global rules directory; install per-project instead."
-      )
     }
 
     switch sub {

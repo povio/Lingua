@@ -34,12 +34,14 @@ enum HelpText {
 
   AI INTEGRATION
     lingua ai install   [--target claude|cursor|both] [--global] [--force]
-                                           Install bundled skills (Claude Code) /
-                                           rules (Cursor). Default: auto-detected from
-                                           existing .claude/ / .cursor/ in the cwd.
+                                           Install bundled Agent Skills for Claude Code
+                                           and/or Cursor (2.4+). Default target is
+                                           auto-detected from .claude/ / .cursor/ in
+                                           the cwd (project) or ~ (global).
     lingua ai uninstall [--target claude|cursor|both] [--global]
-                                           Remove installed skills/rules.
-    lingua ai status                       Show what's installed and where (both targets).
+                                           Remove installed skills.
+    lingua ai status                       Show what's installed and where (all four
+                                           target/scope combinations).
 
   OTHER
     lingua help, --help, -h                Show this help
