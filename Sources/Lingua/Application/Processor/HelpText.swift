@@ -33,9 +33,13 @@ enum HelpText {
     lingua config init                     Generate a template lingua_config.json
 
   AI INTEGRATION
-    lingua ai install [--global] [--force] Install bundled Claude Code skills
-    lingua ai uninstall [--global]         Remove installed skills
-    lingua ai status                       Show what's installed and where
+    lingua ai install   [--target claude|cursor|both] [--global] [--force]
+                                           Install bundled skills (Claude Code) /
+                                           rules (Cursor). Default: auto-detected from
+                                           existing .claude/ / .cursor/ in the cwd.
+    lingua ai uninstall [--target claude|cursor|both] [--global]
+                                           Remove installed skills/rules.
+    lingua ai status                       Show what's installed and where (both targets).
 
   OTHER
     lingua help, --help, -h                Show this help

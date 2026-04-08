@@ -1,12 +1,12 @@
 # Using Lingua with an AI coding agent
 
-Lingua ships with bundled [Claude Code](https://docs.claude.com/claude-code) skills and a set of agent-friendly subcommands so an AI agent can drive the entire localization loop autonomously: discover existing keys, add new translations to your Google Sheet (in the **right section**), regenerate platform files, and reference the new key in code.
+Lingua ships with bundled agent instructions for both [Claude Code](https://docs.claude.com/claude-code) (as **skills**) and [Cursor](https://cursor.com) (as **rules**), plus a set of agent-friendly subcommands. An AI agent in either editor can drive the entire localization loop autonomously: discover existing keys, add new translations to your Google Sheet (in the **right section**), regenerate platform files, and reference the new key in code.
 
 This guide walks you through the one-time setup and the agent surface.
 
 ---
 
-## 1. Install the skills
+## 1. Install the skills / rules
 
 After installing Lingua via Homebrew (or downloading the binary), `cd` into your iOS / Android project and run:
 
@@ -14,15 +14,30 @@ After installing Lingua via Homebrew (or downloading the binary), `cd` into your
 lingua ai install
 ```
 
-This drops a `.claude/skills/lingua-*/` directory into the current project. Commit it. From that point forward, anyone who clones the repo and opens Claude Code automatically gets the same skills.
+By default, `lingua ai install` **auto-detects which integration to install** by looking at the cwd:
 
-For a personal install across all projects on your machine:
+- If `.cursor/` exists → installs Cursor rules into `.cursor/rules/lingua-*.mdc`.
+- If `.claude/` exists → installs Claude Code skills into `.claude/skills/lingua-*/SKILL.md`.
+- If both exist → installs both.
+- If neither exists → falls back to Claude Code skills.
+
+Commit whatever it writes. From that point forward, anyone who clones the repo and opens Claude Code or Cursor automatically gets the same agentic localization workflow.
+
+You can also pick a target explicitly:
+
+```shell
+lingua ai install --target claude   # Claude Code only
+lingua ai install --target cursor   # Cursor only
+lingua ai install --target both     # both
+```
+
+For a personal install across all projects on your machine (Claude Code only — Cursor doesn't support a global rules directory):
 
 ```shell
 lingua ai install --global
 ```
 
-To inspect what's installed:
+To inspect what's installed (reports both Claude Code and Cursor):
 
 ```shell
 lingua ai status
@@ -31,8 +46,9 @@ lingua ai status
 To remove:
 
 ```shell
-lingua ai uninstall            # project scope
-lingua ai uninstall --global   # global scope
+lingua ai uninstall                   # project scope, both targets (auto-detected)
+lingua ai uninstall --target cursor   # remove only Cursor rules
+lingua ai uninstall --global          # remove global Claude Code skills
 ```
 
 The bundled skills are:

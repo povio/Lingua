@@ -99,21 +99,45 @@ private extension CommandLineParser {
   }
 
   func parseAICommand(arguments: [String]) throws -> CommandLineArguments {
-    // Layout: lingua ai <install|uninstall|status> [--global] [--force]
+    // Layout: lingua ai <install|uninstall|status> [--target claude|cursor|both] [--global] [--force]
     try validateArgumentCount(arguments, count: 2)
     guard let sub = Command(rawValue: arguments[2].lowercased()),
           [.install, .uninstall, .status].contains(sub) else {
       throw CommandLineParsingError.invalidCommand
     }
     var booleanFlags: Set<String> = []
-    for token in arguments.dropFirst(3) {
-      if token.hasPrefix("--") {
-        booleanFlags.insert(String(token.dropFirst(2)))
+    var flags: [String: String] = [:]
+
+    var i = 3
+    let tokens = arguments
+    while i < tokens.count {
+      let token = tokens[i]
+      guard token.hasPrefix("--") else {
+        i += 1
+        continue
+      }
+      let name = String(token.dropFirst(2))
+      // Keyed flags consume the next token as their value.
+      if name == "target" {
+        guard i + 1 < tokens.count, !tokens[i + 1].hasPrefix("--") else {
+          throw CommandLineParsingError.invalidCommand
+        }
+        let value = tokens[i + 1].lowercased()
+        guard ["claude", "cursor", "both"].contains(value) else {
+          throw CommandLineParsingError.invalidCommand
+        }
+        flags[name] = value
+        i += 2
+      } else {
+        booleanFlags.insert(name)
+        i += 1
       }
     }
+
     return CommandLineArguments(
       command: .ai,
       subcommand: sub,
+      flags: flags,
       booleanFlags: booleanFlags
     )
   }

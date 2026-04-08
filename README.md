@@ -194,15 +194,17 @@ To ensure you're leveraging the tool optimally, both locally and in the context 
 
 ## Using Lingua with an AI coding agent
 
-Lingua ships with bundled [Claude Code](https://docs.claude.com/claude-code) skills so an AI agent can drive the whole localization loop end-to-end — discover existing keys, add new translations directly to your Google Sheet, regenerate platform files, and reference the new key in your Swift / Kotlin code.
+Lingua ships with bundled instructions for [Claude Code](https://docs.claude.com/claude-code) (skills) and [Cursor](https://cursor.com) (rules) so an AI agent in either editor can drive the whole localization loop end-to-end — discover existing keys, add new translations directly to your Google Sheet, regenerate platform files, and reference the new key in your Swift / Kotlin code.
 
 ```shell
 $ cd MyAwesomeApp
-$ lingua ai install        # drops .claude/skills/lingua-*/ in the current project
-$ git add .claude
+$ lingua ai install        # auto-detects .claude/ and/or .cursor/ in cwd
+$ git add .claude .cursor  # commit whichever was written
 ```
 
-Once installed, you can talk to Claude Code naturally — *"add an empty-state string for the favorites screen: 'No favorites yet'"* — and the agent will run `lingua find`, `lingua sections`, `lingua add`, `lingua sync`, and edit your view to use the new key.
+`lingua ai install` works with both Claude Code and Cursor — by default it auto-detects which integration(s) to install based on existing `.claude/` / `.cursor/` directories in your project. Use `--target claude|cursor|both` to choose explicitly.
+
+Once installed, you can talk to your agent naturally — *"add an empty-state string for the favorites screen: 'No favorites yet'"* — and it will run `lingua find`, `lingua sections`, `lingua add`, `lingua sync`, and edit your view to use the new key.
 
 The new agent-facing subcommands (`lingua sections`, `lingua list`, `lingua find`, `lingua add`, `lingua update`, `lingua sync`, `lingua doctor`) all emit a stable JSON envelope and are fully scriptable, so you can also wire them into other AI frameworks or CI jobs. See [AI agent integration plan](./Resources/Docs/App/AI_AGENT_INTEGRATION.md) and [AI agent usage guide](./Resources/Docs/App/AI_AGENT_USAGE.md) for details, including how to set up a Google service account for write access.
 

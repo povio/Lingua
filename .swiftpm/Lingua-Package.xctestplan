@@ -1,0 +1,29 @@
+{
+  "configurations" : [
+    {
+      "id" : "ACEDF64C-5C2F-4B09-8032-E29665FC2116",
+      "name" : "Test Scheme Action",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "performanceAntipatternCheckerEnabled" : true,
+    "targetForVariableExpansion" : {
+      "containerPath" : "container:",
+      "identifier" : "Lingua",
+      "name" : "Lingua"
+    }
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:",
+        "identifier" : "LinguaTests",
+        "name" : "LinguaTests"
+      }
+    }
+  ],
+  "version" : 1
+}

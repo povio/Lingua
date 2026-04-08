@@ -172,17 +172,58 @@ struct AgentCommandDispatcher {
 
   private func handleAICommand(_ args: CommandLineArguments) throws {
     guard let sub = args.subcommand else {
-      throw AgentError(code: "invalid_command", message: "Usage: lingua ai install|uninstall|status [--global] [--force]")
+      throw AgentError(
+        code: "invalid_command",
+        message: "Usage: lingua ai install|uninstall|status [--target claude|cursor|both] [--global] [--force]"
+      )
     }
     let installer = SkillInstaller()
     let scope: SkillInstaller.Scope = args.booleanFlags.contains("global") ? .global : .project
+
+    // Resolve targets: explicit --target wins, else auto-detect from cwd.
+    let cwd = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+    let targets: [SkillInstaller.Target]
+    let autoDetected: Bool
+    if let raw = args.flags["target"] {
+      switch raw {
+      case "claude": targets = [.claudeCode]
+      case "cursor": targets = [.cursor]
+      case "both":   targets = [.claudeCode, .cursor]
+      default:
+        throw AgentError(
+          code: "invalid_target",
+          message: "--target must be one of: claude, cursor, both"
+        )
+      }
+      autoDetected = false
+    } else {
+      targets = SkillInstaller.autoDetectTargets(in: cwd)
+      autoDetected = true
+    }
+
+    // Reject the unsupported combination early so the user gets a clean error.
+    let isGlobal: Bool = { if case .global = scope { return true } else { return false } }()
+    if isGlobal, targets.contains(.cursor) {
+      throw AgentError(
+        code: "cursor_no_global",
+        message: "Cursor does not support a global rules directory; install per-project instead."
+      )
+    }
+
     switch sub {
     case .install:
-      let installed = try installer.install(scope: scope, force: args.booleanFlags.contains("force"))
-      try output.emitSuccess(InstallResult(scope: scope.label, installed: installed))
+      let force = args.booleanFlags.contains("force")
+      var results: [SkillInstaller.ScopeStatus] = []
+      for target in targets {
+        results.append(try installer.install(scope: scope, target: target, force: force))
+      }
+      try output.emitSuccess(InstallResult(targets: results, autoDetected: autoDetected))
     case .uninstall:
-      let removed = try installer.uninstall(scope: scope)
-      try output.emitSuccess(InstallResult(scope: scope.label, installed: removed))
+      var results: [SkillInstaller.ScopeStatus] = []
+      for target in targets {
+        results.append(try installer.uninstall(scope: scope, target: target))
+      }
+      try output.emitSuccess(InstallResult(targets: results, autoDetected: autoDetected))
     case .status:
       let report = installer.status()
       try output.emitSuccess(report)
@@ -198,6 +239,11 @@ private struct SyncResult: Encodable {
 }
 
 private struct InstallResult: Encodable {
-  let scope: String
-  let installed: [String]
+  let targets: [SkillInstaller.ScopeStatus]
+  let autoDetected: Bool
+
+  enum CodingKeys: String, CodingKey {
+    case targets
+    case autoDetected = "auto_detected"
+  }
 }
