@@ -7,13 +7,10 @@ final class CommandLineParserTests: XCTestCase {
     return makeSUT()
   }()
   
-  func test_parse_throwsNotEnoughArgumentsError_forNotEnoughArguments() {
-    let arguments = ["Lingua"]
-    
-    XCTAssertThrowsError(try sut.parse(arguments: arguments)) { error in
-      XCTAssertEqual((error as? CommandLineParsingError)?.localizedDescription,
-                     CommandLineParsingError.notEnoughArguments.localizedDescription)
-    }
+  func test_parse_returnsHelpCommand_forBareInvocation() throws {
+    // Bare `lingua` shows help instead of erroring out — it's friendlier and what every other CLI does.
+    let parsed = try sut.parse(arguments: ["Lingua"])
+    XCTAssertEqual(parsed.command, .help)
   }
   
   func test_parse_throwsInvalidPlatformError_forInvalidPlatform() {

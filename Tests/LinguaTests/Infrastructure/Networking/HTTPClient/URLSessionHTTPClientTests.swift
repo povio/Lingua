@@ -74,7 +74,7 @@ private extension URLSessionHTTPClientTests {
     return (sut, url)
   }
   
-  class CustomURLResponse: URLResponse {
+  class CustomURLResponse: URLResponse, @unchecked Sendable {
     init() {
       super.init(url: .anyURL(), mimeType: nil, expectedContentLength: 0, textEncodingName: nil)
     }
