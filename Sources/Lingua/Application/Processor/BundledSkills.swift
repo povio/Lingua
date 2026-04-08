@@ -135,9 +135,27 @@ enum BundledSkills {
      ```
      (Also run with `--platform android` if both are configured.)
 
-  6. **Use the new key in code** with the canonical reference syntax:
-     - iOS: `Lingua.Section.key` (e.g. `Lingua.Onboarding.cta_start`)
-     - Android: `R.string.section_key` (e.g. `R.string.onboarding_cta_start`)
+  6. **Use the new key in code.** The sheet stores `snake_case`, but the generated code on
+     each platform transforms it. **Never call the snake_case key from code** — always use
+     the transformed identifier the generator produced. After `lingua sync`, open
+     `Lingua.swift` (iOS) / `strings.xml` (Android) and copy the exact symbol if you're not
+     sure.
+
+     **iOS — `Lingua.<Section>.<key>`** (transformations applied by `lingua sync`):
+     - Section name → `PascalCase` (`general` → `General`, `empty_states` → `EmptyStates`).
+     - Key → `camelCase` (`app_description` → `appDescription`, `cta_start` → `ctaStart`,
+       `empty_state_message` → `emptyStateMessage`).
+     - Final reference: `Lingua.General.appDescription`, **not** `Lingua.General.app_description`.
+     - Reserved Swift identifiers get backticked automatically (`class` → `` `class` ``).
+     - If `Lingua.<Section>.<key>` does not compile, the cause is almost always that you
+       wrote the raw `snake_case` key instead of the camelCased one. Re-check `Lingua.swift`.
+
+     **Android — `R.string.<section>_<key>`** (lowercased, snake_case preserved):
+     - Identifier is `(section + "_" + key).lowercased()`.
+       Example: section `General`, key `app_description` → `R.string.general_app_description`.
+     - Unlike iOS, Android keeps `snake_case`. Don't camelCase it.
+     - When in doubt, grep `strings.xml` for the `<string name="...">` entry and use that
+       name verbatim.
 
   > **Section separators are automatic.** When `lingua add --new-section` creates a new
   > section in a non-empty sheet, it automatically leaves one blank row above the new section
@@ -200,6 +218,15 @@ enum BundledSkills {
      lingua sync ./lingua_config.json --platform ios
      ```
 
+  4. **Reference the key from code with the platform-transformed identifier**, never the raw
+     `snake_case` key from the sheet:
+     - **iOS**: `Lingua.<PascalSection>.<camelKey>` — section becomes `PascalCase`, key becomes
+       `camelCase`. e.g. sheet `General / app_description` → `Lingua.General.appDescription`.
+       **Not** `Lingua.General.app_description`.
+     - **Android**: `R.string.<section>_<key>` lowercased, snake_case preserved. e.g.
+       `R.string.general_app_description`.
+     - If unsure, open the regenerated `Lingua.swift` / `strings.xml` and copy the symbol.
+
   ## Hard rules
 
   - `update` never moves rows. It only changes values in place.
@@ -225,10 +252,14 @@ enum BundledSkills {
   ```
 
   The JSON response contains a ranked list of matches with `section`, `key`, and `englishValue`.
-  Use the canonical reference syntax for the platform you're editing:
+  Use the platform-transformed identifier — never the raw `snake_case` key from the sheet:
 
-  - iOS: `Lingua.Section.key` (e.g. `Lingua.Settings.save_changes`)
-  - Android: `R.string.section_key` (e.g. `R.string.settings_save_changes`)
+  - **iOS**: `Lingua.<PascalSection>.<camelKey>` — section is `PascalCase`, key is `camelCase`.
+    e.g. sheet `Settings / save_changes` → `Lingua.Settings.saveChanges`. **Not**
+    `Lingua.Settings.save_changes`.
+  - **Android**: `R.string.<section>_<key>` lowercased, snake_case preserved. e.g.
+    `R.string.settings_save_changes`.
+  - If unsure, open the generated `Lingua.swift` / `strings.xml` and copy the exact symbol.
 
   If no match is found, use the `lingua-add-translation` skill to add a new key.
   """
