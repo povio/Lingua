@@ -45,6 +45,39 @@ final class URLSessionHTTPClientTests: XCTestCase {
     XCTAssertEqual(receivedResponse.statusCode, non200StatusCode)
   }
   
+  func test_fetchDataWithRequest_returnsDataAndResponse() async throws {
+    let (sut, url) = makeSUT()
+    let expectedData: Data = .anyData(string: "payload")
+    MockURLProtocol.mockData = expectedData
+    MockURLProtocol.mockError = nil
+    MockURLProtocol.mockResponse = HTTPURLResponse.anyURLResponse(statusCode: 201)
+
+    var request = URLRequest(url: url)
+    request.httpMethod = "POST"
+    request.httpBody = Data("body".utf8)
+    let (data, response) = try await sut.fetchData(with: request)
+
+    XCTAssertEqual(data, expectedData)
+    XCTAssertEqual(response.statusCode, 201)
+  }
+
+  func test_fetchDataWithRequest_whenResponseIsNotHTTPURLResponse_throwsInvalidHTTPResponseError() async {
+    let (sut, url) = makeSUT()
+    MockURLProtocol.mockData = Data("body".utf8)
+    MockURLProtocol.mockError = nil
+    MockURLProtocol.mockResponse = CustomURLResponse()
+
+    do {
+      _ = try await sut.fetchData(with: URLRequest(url: url))
+      XCTFail("expected error")
+    } catch let error as InvalidHTTPResponseError {
+      XCTAssertEqual(error.statusCode, 0)
+      XCTAssertEqual(error.data, Data("body".utf8))
+    } catch {
+      XCTFail("expected InvalidHTTPResponseError, got \(error)")
+    }
+  }
+
   func test_fetchData_whenResponseIsNotHTTPURLResponse_throwsInvalidHTTPResponseError() async throws {
     let (sut, url) = makeSUT()
     
