@@ -14,7 +14,6 @@
 "localize_button" = "Localize";
 "swift_code_toggle_title" = "Generate Swift Code";
 "input_directory_button" = "Choose Directory";
-"open_in_finder" = "Show in Finder";
 "ios_localization_info_message" = "After you \"Localize\", you have to Add files to \"%@\"... in Xcode, if they are not added already.
 
 NOTE: If you are using Xcode 16 and have structured your project using 'Folders' instead of 'Groups', this step is not necessary.";
@@ -55,6 +54,7 @@ It serves as base language directory from where the Lingua.swift file will be cr
 "filtering_section_textfield_placeholder" = "Enter a section";
 "filtering_add_section_button_title" = "Add section";
 "copied_to_clipboard" = "Copied to clipboard!";
+"open_in_finder" = "Show in Finder";
 "lingua_ai_section" = "Lingua AI";
 "lingua_ai_status_title" = "Status";
 "lingua_ai_description" = "Check the current Lingua AI setup for this project and install or remove agent skills in the selected target.";

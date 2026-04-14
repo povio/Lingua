@@ -44,12 +44,40 @@ public enum Lingua {
 		public static let configurationSection = tr("ProjectForm", "configuration_section")
 		/// Copied to clipboard!
 		public static let copiedToClipboard = tr("ProjectForm", "copied_to_clipboard")
+		/// Add section
+		public static let filteringAddSectionButtonTitle = tr("ProjectForm", "filtering_add_section_button_title")
+		/// Add the sections that you want to include into the project, otherwise if it is disabled all the sections will be included
+		public static let filteringSectionDescription = tr("ProjectForm", "filtering_section_description")
+		/// Enter a section
+		public static let filteringSectionTextfieldPlaceholder = tr("ProjectForm", "filtering_section_textfield_placeholder")
+		/// Enable sections filtering
+		public static let filteringSectionTitle = tr("ProjectForm", "filtering_section_title")
+		/// Info
+		public static let infoHeader = tr("ProjectForm", "info_header")
+		/// API Key *
+		public static let inputApiKey = tr("ProjectForm", "input_api_key")
+		/// Choose Directory
+		public static let inputDirectoryButton = tr("ProjectForm", "input_directory_button")
+		/// Output directory *
+		public static let inputDirectoryOutput = tr("ProjectForm", "input_directory_output")
+		/// Name *
+		public static let inputProjectName = tr("ProjectForm", "input_project_name")
+		/// Sheet ID *
+		public static let inputSheetId = tr("ProjectForm", "input_sheet_id")
+		/// After you "Localize", you have to Add files to "%@"... in Xcode, if they are not added already.\n\nNOTE: If you are using Xcode 16 and have structured your project using 'Folders' instead of 'Groups', this step is not necessary.
+		public static func iosLocalizationInfoMessage(_ param1: String) -> String {
+			return tr("ProjectForm", "ios_localization_info_message", param1)
+		}
+		/// Last localized: %@
+		public static func lastLocalizedSubtitle(_ param1: String) -> String {
+			return tr("ProjectForm", "last_localized_subtitle", param1)
+		}
+		/// Checking...
+		public static let linguaAiCheckingStatus = tr("ProjectForm", "lingua_ai_checking_status")
 		/// Check the current Lingua AI setup for this project and install or remove agent skills in the selected target.
 		public static let linguaAiDescription = tr("ProjectForm", "lingua_ai_description")
 		/// Lingua could not access the selected project directory.
 		public static let linguaAiDirectoryAccessError = tr("ProjectForm", "lingua_ai_directory_access_error")
-		/// Checking...
-		public static let linguaAiCheckingStatus = tr("ProjectForm", "lingua_ai_checking_status")
 		/// Install Lingua AI
 		public static let linguaAiInstallButton = tr("ProjectForm", "lingua_ai_install_button")
 		/// Lingua AI installed for %@.
@@ -78,48 +106,18 @@ public enum Lingua {
 		public static let linguaAiPartiallyInstalled = tr("ProjectForm", "lingua_ai_partially_installed")
 		/// Lingua AI
 		public static let linguaAiSection = tr("ProjectForm", "lingua_ai_section")
-		/// Uninstall Lingua AI
-		public static let linguaAiUninstallButton = tr("ProjectForm", "lingua_ai_uninstall_button")
-		/// Lingua AI uninstalled.
-		public static let linguaAiUninstalled = tr("ProjectForm", "lingua_ai_uninstalled")
-		/// Uninstalling Lingua AI...
-		public static let linguaAiUninstalling = tr("ProjectForm", "lingua_ai_uninstalling")
 		/// Status
 		public static let linguaAiStatusTitle = tr("ProjectForm", "lingua_ai_status_title")
 		/// Unavailable
 		public static let linguaAiStatusUnavailable = tr("ProjectForm", "lingua_ai_status_unavailable")
 		/// Install target
 		public static let linguaAiTargetPicker = tr("ProjectForm", "lingua_ai_target_picker")
-		/// Add section
-		public static let filteringAddSectionButtonTitle = tr("ProjectForm", "filtering_add_section_button_title")
-		/// Add the sections that you want to include into the project, otherwise if it is disabled all the sections will be included
-		public static let filteringSectionDescription = tr("ProjectForm", "filtering_section_description")
-		/// Enter a section
-		public static let filteringSectionTextfieldPlaceholder = tr("ProjectForm", "filtering_section_textfield_placeholder")
-		/// Enable sections filtering
-		public static let filteringSectionTitle = tr("ProjectForm", "filtering_section_title")
-		/// Info
-		public static let infoHeader = tr("ProjectForm", "info_header")
-		/// API Key *
-		public static let inputApiKey = tr("ProjectForm", "input_api_key")
-		/// Choose Directory
-		public static let inputDirectoryButton = tr("ProjectForm", "input_directory_button")
-		/// Output directory *
-		public static let inputDirectoryOutput = tr("ProjectForm", "input_directory_output")
-		/// Show in Finder
-		public static let openInFinder = tr("ProjectForm", "open_in_finder")
-		/// Name *
-		public static let inputProjectName = tr("ProjectForm", "input_project_name")
-		/// Sheet ID *
-		public static let inputSheetId = tr("ProjectForm", "input_sheet_id")
-		/// After you "Localize", you have to Add files to "%@"... in Xcode, if they are not added already.\n\nNOTE: If you are using Xcode 16 and have structured your project using 'Folders' instead of 'Groups', this step is not necessary.
-		public static func iosLocalizationInfoMessage(_ param1: String) -> String {
-			return tr("ProjectForm", "ios_localization_info_message", param1)
-		}
-		/// Last localized: %@
-		public static func lastLocalizedSubtitle(_ param1: String) -> String {
-			return tr("ProjectForm", "last_localized_subtitle", param1)
-		}
+		/// Uninstall Lingua AI
+		public static let linguaAiUninstallButton = tr("ProjectForm", "lingua_ai_uninstall_button")
+		/// Lingua AI uninstalled.
+		public static let linguaAiUninstalled = tr("ProjectForm", "lingua_ai_uninstalled")
+		/// Uninstalling Lingua AI...
+		public static let linguaAiUninstalling = tr("ProjectForm", "lingua_ai_uninstalling")
 		/// Lingua.swift Directory *
 		public static let linguaSwiftOutputDirectory = tr("ProjectForm", "lingua_swift_output_directory")
 		/// This should be the directory where you want to store the generated Lingua.swift file
@@ -128,6 +126,8 @@ public enum Lingua {
 		public static let localizeButton = tr("ProjectForm", "localize_button")
 		/// The .lproj directory should be the directory where .strings files are saved.\nIt serves as base language directory from where the Lingua.swift file will be created
 		public static let lprojDirectoryHelp = tr("ProjectForm", "lproj_directory_help")
+		/// Show in Finder
+		public static let openInFinder = tr("ProjectForm", "open_in_finder")
 		/// The output directory property should be the path where you want the tool to create localization files.\n\n* For iOS it can be any directory on your project. After you run the command, for the first time, \n   you have to Add files to 'YourProject' in Xcode.\n\n* For Android, since the translation are placed in a specific project directory,\n   the output directory it should look something like this: path/YourProject/app/src/main/res 
 		public static let outputDirectoryHelp = tr("ProjectForm", "output_directory_help")
 		/// Platform *
@@ -158,10 +158,10 @@ public enum Lingua {
 	}
 
 	public enum Projects {
-		/// Install the Lingua CLI with Homebrew. In Terminal, run:\n\nbrew tap poviolabs/lingua\nbrew install lingua
-		public static let cliInstallDescription = tr("Projects", "cli_install_description")
 		/// Copy install commands
 		public static let cliInstallCopyButton = tr("Projects", "cli_install_copy_button")
+		/// Install the Lingua CLI with Homebrew. In Terminal, run:\n\nbrew tap poviolabs/lingua\nbrew install lingua
+		public static let cliInstallDescription = tr("Projects", "cli_install_description")
 		/// Command-line tool
 		public static let cliInstallTitle = tr("Projects", "cli_install_title")
 		/// %@ copy
