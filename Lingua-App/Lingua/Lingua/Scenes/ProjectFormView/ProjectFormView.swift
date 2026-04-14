@@ -23,7 +23,7 @@ struct ProjectFormView: View {
   var onSave: ((Project) -> Void)? = nil
   var onDelete: ((Project) -> Void)? = nil
   var onLocalize: ((Project) -> Void)? = nil
-  
+
   var body: some View {
     VStack(alignment: .leading) {
       Form {
@@ -34,12 +34,7 @@ struct ProjectFormView: View {
       }
       .toolbar {
         ToolbarItem(placement: .cancellationAction) {
-          VStack(alignment: .leading) {
-            Text(viewModel.project.title)
-              .font(.headline)
-            Text(viewModel.project.lastLocalizedAt.map { Lingua.ProjectForm.lastLocalizedSubtitle($0.formatted) } ?? "")
-              .font(.subheadline)
-          }
+          projectHeaderToolbarContent
         }
         ToolbarItem(placement: .primaryAction) {
           localizeButton()
@@ -70,6 +65,23 @@ struct ProjectFormView: View {
 
 // MARK: - Private View Builders
 private extension ProjectFormView {
+  @ViewBuilder
+  var projectHeaderToolbarContent: some View {
+    VStack(alignment: .leading, spacing: 2) {
+      Text(viewModel.project.title)
+        .font(.headline)
+        .lineLimit(1)
+        .truncationMode(.tail)
+      Text(viewModel.project.lastLocalizedAt.map { Lingua.ProjectForm.lastLocalizedSubtitle($0.formatted) } ?? "")
+        .font(.subheadline)
+        .lineLimit(1)
+        .truncationMode(.tail)
+    }
+    .padding(.horizontal, 16)
+    .padding(.vertical, 8)
+    .frame(maxWidth: 320, alignment: .leading)
+  }
+
   @ViewBuilder
   func basicConfigurationFormSection() -> some View {
     Section(header: Text(Lingua.ProjectForm.configurationSection).font(.headline)) {
