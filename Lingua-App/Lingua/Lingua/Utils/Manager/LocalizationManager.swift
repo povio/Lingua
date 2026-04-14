@@ -10,10 +10,17 @@ import LinguaLib
 
 struct LocalizationManager {
   let directoryAccessor: DirectoryAccessor
-  
+  let configFileManager: LinguaConfigFileManager
+
+  init(directoryAccessor: DirectoryAccessor, configFileManager: LinguaConfigFileManager = .init()) {
+    self.directoryAccessor = directoryAccessor
+    self.configFileManager = configFileManager
+  }
+
   func localize(project: Project) async throws -> String {
     try await directoryAccessor.accessDirectory(fromBookmarkKey: project.bookmarkDataForDirectoryPath,
                                                 path: project.directoryPath)
+    try configFileManager.writeConfig(for: project)
     try await directoryAccessor.accessDirectory(fromBookmarkKey: project.bookmarkDataForStringsDirectory,
                                                 path: project.swiftCode.stringsDirectory)
     try await directoryAccessor.accessDirectory(fromBookmarkKey: project.bookmarkDataForOutputSwiftCodeFileDirectory,
