@@ -221,66 +221,18 @@ private extension ProjectFormView {
 
   @ViewBuilder
   func linguaAIFormSection() -> some View {
-    Section(header: Text(Lingua.ProjectForm.linguaAiSection).font(.headline)) {
-      VStack(alignment: .leading, spacing: 8) {
-        HStack {
-          Text(Lingua.ProjectForm.linguaAiStatusTitle)
-            .bold()
-          Spacer()
-          Text(aiStatusLabel)
-            .foregroundStyle(aiStatusColor)
-        }
-
-        if let statusError = aiStatusError {
-          Text(statusError.localizedDescription)
-            .font(.subheadline)
-            .foregroundStyle(.red)
-        } else {
-          Text(aiStatusDetails)
-            .font(.subheadline)
-            .foregroundStyle(.secondary)
-        }
-
-        Text(Lingua.ProjectForm.linguaAiDescription)
-          .font(.subheadline)
-          .foregroundStyle(.secondary)
-      }
-      .padding(.vertical, 4)
-
-      Picker(Lingua.ProjectForm.linguaAiTargetPicker, selection: $aiInstallOption) {
-        ForEach(LinguaAIInstallOption.allCases) { option in
-          Text(option.label.capitalized)
-            .tag(option)
-        }
-      }
-      .disabled(!canManageLinguaAI)
-
-      HStack(spacing: 12) {
-        Button(action: installLinguaAI) {
-          HStack {
-            Image(systemName: "sparkles")
-            Text(Lingua.ProjectForm.linguaAiInstallButton)
-          }
-        }
-        .disabled(!canManageLinguaAI || isManagingAI)
-
-        if shouldShowUninstallButton {
-          Button(action: uninstallLinguaAI) {
-            HStack {
-              Image(systemName: "trash")
-              Text(Lingua.ProjectForm.linguaAiUninstallButton)
-            }
-          }
-          .disabled(isManagingAI)
-        }
-      }
-
-      if !canManageLinguaAI {
-        Text(Lingua.ProjectForm.linguaAiNeedsDirectory)
-          .font(.subheadline)
-          .foregroundStyle(.secondary)
-      }
-    }
+    LinguaAIFormSection(
+      viewModel: LinguaAIFormSectionViewModel(
+        projectViewModel: viewModel,
+        aiStatus: aiStatus,
+        aiStatusError: aiStatusError,
+        isRefreshingAIStatus: isRefreshingAIStatus,
+        isManagingAI: isManagingAI
+      ),
+      aiInstallOption: $aiInstallOption,
+      onInstall: installLinguaAI,
+      onUninstall: uninstallLinguaAI
+    )
   }
   
   @ViewBuilder
