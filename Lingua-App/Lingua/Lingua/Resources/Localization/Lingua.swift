@@ -158,6 +158,12 @@ public enum Lingua {
 	}
 
 	public enum Projects {
+		/// Install the Lingua CLI with Homebrew. In Terminal, run:\n\nbrew tap poviolabs/lingua\nbrew install lingua
+		public static let cliInstallDescription = tr("Projects", "cli_install_description")
+		/// Copy install commands
+		public static let cliInstallCopyButton = tr("Projects", "cli_install_copy_button")
+		/// Command-line tool
+		public static let cliInstallTitle = tr("Projects", "cli_install_title")
 		/// %@ copy
 		public static func copyProject(_ param1: String) -> String {
 			return tr("Projects", "copy_project", param1)
