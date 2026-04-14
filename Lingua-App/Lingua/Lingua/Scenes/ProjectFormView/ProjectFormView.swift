@@ -33,8 +33,15 @@ struct ProjectFormView: View {
         iOSInfoFormSection()
       }
       .toolbar {
-        ToolbarItem(placement: .cancellationAction) {
-          projectHeaderToolbarContent
+        if #available(macOS 26.0, *) {
+          ToolbarItem(placement: .navigation) {
+            projectHeaderToolbarContent
+          }
+          .sharedBackgroundVisibility(.hidden)
+        } else {
+          ToolbarItem(placement: .navigation) {
+            projectHeaderToolbarContent
+          }
         }
         ToolbarItem(placement: .primaryAction) {
           localizeButton()
@@ -77,8 +84,6 @@ private extension ProjectFormView {
         .lineLimit(1)
         .truncationMode(.tail)
     }
-    .padding(.horizontal, 16)
-    .padding(.vertical, 8)
     .frame(maxWidth: 320, alignment: .leading)
   }
 

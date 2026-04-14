@@ -9,18 +9,9 @@ import SwiftUI
 
 struct ProjectsView: View {
   @EnvironmentObject private var viewModel: ProjectsViewModel
-  @State private var columnVisibility = NavigationSplitViewVisibility.automatic
 
   var body: some View {
-    NavigationSplitView(columnVisibility: $columnVisibility) {
-      VStack {
-        HStack {
-          Image(systemName: "folder")
-          Text("Projects")
-        }
-        Spacer()
-      }
-    } content: {
+    NavigationSplitView {
       ProjectListView()
         .environmentObject(viewModel)
     } detail: {
@@ -37,9 +28,9 @@ struct ProjectsView: View {
       }
     }
     .scrollContentBackground(.hidden)
+    .navigationTitle("")
     .onAppear {
       viewModel.selectFirstProject()
-      columnVisibility = .doubleColumn
     }
     .alert(isPresented: $viewModel.showDeleteAlert) { deletionAlert() }
     .overlay(ProgressOverlay(
@@ -68,7 +59,7 @@ private extension ProjectsView {
     )
     .navigationSplitViewColumnWidth(min: 400, ideal: 600)
   }
-  
+
   @ViewBuilder
   func hudResultOverlay() -> some View {
     switch viewModel.localizationResult {
@@ -84,7 +75,7 @@ private extension ProjectsView {
       EmptyView()
     }
   }
-  
+
   func deletionAlert() -> Alert {
     Alert(
       title: Text(Lingua.Projects.deleteAlertTitle),
