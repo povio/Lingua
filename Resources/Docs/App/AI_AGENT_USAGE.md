@@ -1,6 +1,6 @@
 # Using Lingua with an AI coding agent
 
-Lingua ships with bundled [Agent Skills](https://agentskills.io/) for both [Claude Code](https://docs.claude.com/claude-code) and [Cursor](https://cursor.com/docs/skills) (2.4+), plus a set of agent-friendly subcommands. An AI agent in either editor can drive the entire localization loop autonomously: discover existing keys, add new translations to your Google Sheet (in the **right section**), regenerate platform files, and reference the new key in code.
+Lingua ships with bundled [Agent Skills](https://agentskills.io/) for [Claude Code](https://docs.claude.com/claude-code), [Cursor](https://cursor.com/docs/skills) (2.4+), and `.agents/skills/` (same standard layout), plus a set of agent-friendly subcommands. An AI coding agent can drive the entire localization loop autonomously: discover existing keys, add new translations to your Google Sheet (in the **right section**), regenerate platform files, and reference the new key in code.
 
 This guide walks you through the one-time setup and the agent surface.
 
@@ -20,28 +20,31 @@ By default, `lingua ai install` **auto-detects which integration(s) to install**
 
 - If `.cursor/` exists → installs into `.cursor/skills/lingua-*/SKILL.md`.
 - If `.claude/` exists → installs into `.claude/skills/lingua-*/SKILL.md`.
-- If both exist → installs both.
-- If neither exists → falls back to Claude Code.
+- If `.agents/` exists → installs into `.agents/skills/lingua-*/SKILL.md`.
+- Any combination of the above → installs each detected target.
+- If none exist → falls back to Claude Code.
 
-Commit whatever it writes. From that point forward, anyone who clones the repo and opens Claude Code or Cursor automatically gets the same agentic localization workflow.
+Commit whatever it writes. From that point forward, anyone who clones the repo gets the same agentic localization workflow for whichever layout you committed.
 
 You can also pick a target explicitly:
 
 ```shell
 lingua ai install --target claude   # Claude Code only
 lingua ai install --target cursor   # Cursor only
-lingua ai install --target both     # both
+lingua ai install --target agents   # .agents/skills only (often enough for any agent)
+lingua ai install --target both     # Claude + Cursor
 ```
 
-For a personal install across all projects on your machine, use `--global`. Both targets support a global skills directory (`~/.claude/skills/` and `~/.cursor/skills/`):
+For a personal install across all projects on your machine, use `--global`. Each target has a global skills directory (`~/.claude/skills/`, `~/.cursor/skills/`, `~/.agents/skills/`):
 
 ```shell
 lingua ai install --global                  # auto-detects from ~
 lingua ai install --target cursor --global  # explicit
-lingua ai install --target both --global    # both
+lingua ai install --target both --global    # Claude + Cursor global
+lingua ai install --target agents --global  # ~/.agents/skills only
 ```
 
-To inspect what's installed (reports all four target × scope combinations):
+To inspect what's installed (reports all five target × scope combinations):
 
 ```shell
 lingua ai status

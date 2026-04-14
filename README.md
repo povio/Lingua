@@ -194,15 +194,15 @@ To ensure you're leveraging the tool optimally, both locally and in the context 
 
 ## Using Lingua with an AI coding agent
 
-Lingua ships with bundled [Agent Skills](https://agentskills.io/) for both [Claude Code](https://docs.claude.com/claude-code) and [Cursor](https://cursor.com/docs/skills) (2.4+), so an AI agent in either editor can drive the whole localization loop end-to-end — discover existing keys, add new translations directly to your Google Sheet, regenerate platform files, and reference the new key in your Swift / Kotlin code.
+Lingua ships with bundled [Agent Skills](https://agentskills.io/) for [Claude Code](https://docs.claude.com/claude-code), [Cursor](https://cursor.com/docs/skills) (2.4+), and a generic `.agents/skills/` layout, so an AI agent can drive the whole localization loop end-to-end — discover existing keys, add new translations directly to your Google Sheet, regenerate platform files, and reference the new key in your Swift / Kotlin code.
 
 ```shell
 $ cd MyAwesomeApp
-$ lingua ai install        # auto-detects .claude/ and/or .cursor/ in cwd
-$ git add .claude .cursor  # commit whichever was written
+$ lingua ai install        # auto-detects .claude/ / .cursor/ / .agents/ in cwd
+$ git add .claude .cursor .agents  # commit whichever was written
 ```
 
-`lingua ai install` works with both editors — by default it auto-detects which integration(s) to install based on existing `.claude/` / `.cursor/` directories. Use `--target claude|cursor|both` to choose explicitly, and `--global` to install to `~/.claude/skills/` or `~/.cursor/skills/` instead.
+`lingua ai install` auto-detects which integration(s) to install from existing `.claude/`, `.cursor/`, and `.agents/` directories. Use `--target claude|cursor|agents|both` to choose explicitly (`both` = Claude + Cursor only; prefer `--target agents` when a shared `.agents/skills/` tree is enough), and `--global` to install under `~/.claude/skills/`, `~/.cursor/skills/`, or `~/.agents/skills/` instead.
 
 Once installed, you can talk to your agent naturally — *"add an empty-state string for the favorites screen: 'No favorites yet'"* — and it will run `lingua find`, `lingua sections`, `lingua add`, `lingua sync`, and edit your view to use the new key.
 

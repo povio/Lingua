@@ -33,14 +33,15 @@ enum HelpText {
     lingua config init                     Generate a template lingua_config.json
 
   AI INTEGRATION
-    lingua ai install   [--target claude|cursor|both] [--global] [--force]
-                                           Install bundled Agent Skills for Claude Code
-                                           and/or Cursor (2.4+). Default target is
-                                           auto-detected from .claude/ / .cursor/ in
-                                           the cwd (project) or ~ (global).
-    lingua ai uninstall [--target claude|cursor|both] [--global]
+    lingua ai install   [--target claude|cursor|agents|both] [--global] [--force]
+                                           Install bundled Agent Skills for Claude Code,
+                                           Cursor (2.4+), and/or .agents/skills. Default
+                                           target is auto-detected from .claude/ / .cursor/
+                                           / .agents/ in the cwd (project) or ~ (global).
+                                           both = claude+cursor only.
+    lingua ai uninstall [--target claude|cursor|agents|both] [--global]
                                            Remove installed skills.
-    lingua ai status                       Show what's installed and where (all four
+    lingua ai status                       Show what's installed and where (all five
                                            target/scope combinations).
 
   OTHER

@@ -174,7 +174,7 @@ struct AgentCommandDispatcher {
     guard let sub = args.subcommand else {
       throw AgentError(
         code: "invalid_command",
-        message: "Usage: lingua ai install|uninstall|status [--target claude|cursor|both] [--global] [--force]"
+        message: "Usage: lingua ai install|uninstall|status [--target claude|cursor|agents|both] [--global] [--force]"
       )
     }
     let installer = SkillInstaller()
@@ -182,10 +182,9 @@ struct AgentCommandDispatcher {
     let isGlobal: Bool = { if case .global = scope { return true } else { return false } }()
 
     // Resolve targets: explicit --target wins, else auto-detect.
-    // For project scope, auto-detection looks at the cwd (where the project's `.cursor/` and
-    // `.claude/` directories live). For global scope, it looks at the user's home directory
-    // (where `~/.cursor/` and `~/.claude/` live — these are typically present whenever the
-    // user has either editor installed).
+    // For project scope, auto-detection looks at the cwd (where the project's `.cursor/`,
+    // `.claude/`, and `.agents/` directories live). For global scope, it looks at the user's
+    // home directory (where `~/.cursor/`, `~/.claude/`, and `~/.agents/` live).
     let detectionRoot: URL = isGlobal
       ? FileManager.default.homeDirectoryForCurrentUser
       : URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
@@ -196,11 +195,12 @@ struct AgentCommandDispatcher {
       switch raw {
       case "claude": targets = [.claudeCode]
       case "cursor": targets = [.cursor]
-      case "both":   targets = [.claudeCode, .cursor]
+      case "agents": targets = [.agents]
+      case "both": targets = [.claudeCode, .cursor]
       default:
         throw AgentError(
           code: "invalid_target",
-          message: "--target must be one of: claude, cursor, both"
+          message: "--target must be one of: claude, cursor, agents, both"
         )
       }
       autoDetected = false
