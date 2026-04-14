@@ -23,7 +23,7 @@ struct ProjectFormView: View {
   var onSave: ((Project) -> Void)? = nil
   var onDelete: ((Project) -> Void)? = nil
   var onLocalize: ((Project) -> Void)? = nil
-  
+
   var body: some View {
     VStack(alignment: .leading) {
       Form {
@@ -33,12 +33,14 @@ struct ProjectFormView: View {
         iOSInfoFormSection()
       }
       .toolbar {
-        ToolbarItem(placement: .cancellationAction) {
-          VStack(alignment: .leading) {
-            Text(viewModel.project.title)
-              .font(.headline)
-            Text(viewModel.project.lastLocalizedAt.map { Lingua.ProjectForm.lastLocalizedSubtitle($0.formatted) } ?? "")
-              .font(.subheadline)
+        if #available(macOS 26.0, *) {
+          ToolbarItem(placement: .navigation) {
+            projectHeaderToolbarContent
+          }
+          .sharedBackgroundVisibility(.hidden)
+        } else {
+          ToolbarItem(placement: .navigation) {
+            projectHeaderToolbarContent
           }
         }
         ToolbarItem(placement: .primaryAction) {
@@ -70,6 +72,21 @@ struct ProjectFormView: View {
 
 // MARK: - Private View Builders
 private extension ProjectFormView {
+  @ViewBuilder
+  var projectHeaderToolbarContent: some View {
+    VStack(alignment: .leading, spacing: 2) {
+      Text(viewModel.project.title)
+        .font(.headline)
+        .lineLimit(1)
+        .truncationMode(.tail)
+      Text(viewModel.project.lastLocalizedAt.map { Lingua.ProjectForm.lastLocalizedSubtitle($0.formatted) } ?? "")
+        .font(.subheadline)
+        .lineLimit(1)
+        .truncationMode(.tail)
+    }
+    .frame(maxWidth: 320, alignment: .leading)
+  }
+
   @ViewBuilder
   func basicConfigurationFormSection() -> some View {
     Section(header: Text(Lingua.ProjectForm.configurationSection).font(.headline)) {
