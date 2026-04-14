@@ -14,6 +14,7 @@
 "localize_button" = "Localize";
 "swift_code_toggle_title" = "Generate Swift Code";
 "input_directory_button" = "Choose Directory";
+"open_in_finder" = "Show in Finder";
 "ios_localization_info_message" = "After you \"Localize\", you have to Add files to \"%@\"... in Xcode, if they are not added already.
 
 NOTE: If you are using Xcode 16 and have structured your project using 'Folders' instead of 'Groups', this step is not necessary.";

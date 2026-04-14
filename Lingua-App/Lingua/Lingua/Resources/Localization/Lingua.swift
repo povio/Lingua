@@ -106,6 +106,8 @@ public enum Lingua {
 		public static let inputDirectoryButton = tr("ProjectForm", "input_directory_button")
 		/// Output directory *
 		public static let inputDirectoryOutput = tr("ProjectForm", "input_directory_output")
+		/// Show in Finder
+		public static let openInFinder = tr("ProjectForm", "open_in_finder")
 		/// Name *
 		public static let inputProjectName = tr("ProjectForm", "input_project_name")
 		/// Sheet ID *

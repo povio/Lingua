@@ -5,12 +5,13 @@
 //  Created by Egzon Arifi on 21/08/2023.
 //
 
+import AppKit
 import SwiftUI
 
 struct DirectoryInputField: View {
   var title: String
   var bookmarkDataKey: String
-  
+
   @Binding var directoryPath: String
   @Binding var isValid: Bool
   @State private var isHovered = false
