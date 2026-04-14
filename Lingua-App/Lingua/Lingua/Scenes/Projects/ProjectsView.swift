@@ -32,10 +32,13 @@ struct ProjectsView: View {
     .onAppear {
       viewModel.selectFirstProject()
     }
+    .task(id: viewModel.selectedProjectId) {
+      await viewModel.refreshSelectedProjectAIStatus()
+    }
     .alert(isPresented: $viewModel.showDeleteAlert) { deletionAlert() }
     .overlay(ProgressOverlay(
-      isProgressing: $viewModel.isLocalizing,
-      text: Lingua.Projects.localizing
+      isProgressing: viewModel.isShowingProgressOverlay,
+      text: viewModel.progressOverlayText
     ))
     .overlay(hudResultOverlay())
   }
@@ -47,6 +50,11 @@ private extension ProjectsView {
     ProjectFormView(
       viewModel: ProjectFormViewModel(project: project),
       isLocalizing: $viewModel.isLocalizing,
+      aiInstallOption: $viewModel.aiInstallOption,
+      aiStatus: viewModel.aiStatus,
+      aiStatusError: viewModel.aiStatusError,
+      isRefreshingAIStatus: viewModel.isRefreshingAIStatus,
+      isManagingAI: viewModel.isManagingAI,
       onSave: { updatedProject in
         viewModel.updateProject(updatedProject)
       },
@@ -55,6 +63,12 @@ private extension ProjectsView {
       },
       onLocalize: { projectToLocalize in
         Task { await viewModel.localizeProject(projectToLocalize) }
+      },
+      onInstallLinguaAI: { projectToInstall in
+        Task { await viewModel.installLinguaAI(for: projectToInstall) }
+      },
+      onUninstallLinguaAI: { projectToUninstall in
+        Task { await viewModel.uninstallLinguaAI(for: projectToUninstall) }
       }
     )
     .navigationSplitViewColumnWidth(min: 400, ideal: 600)
@@ -62,17 +76,27 @@ private extension ProjectsView {
 
   @ViewBuilder
   func hudResultOverlay() -> some View {
-    switch viewModel.localizationResult {
-    case .success(let message):
+    if case .success(let message) = viewModel.aiResult {
       HUDOverlay(message: message, isError: false) {
-        viewModel.localizationResult = nil
+        viewModel.aiResult = nil
       }
-    case .failure(let error):
+    } else if case .failure(let error) = viewModel.aiResult {
       HUDOverlay(message: error.localizedDescription, isError: true) {
-        viewModel.localizationResult = nil
+        viewModel.aiResult = nil
       }
-    case .none:
-      EmptyView()
+    } else {
+      switch viewModel.localizationResult {
+      case .success(let message):
+        HUDOverlay(message: message, isError: false) {
+          viewModel.localizationResult = nil
+        }
+      case .failure(let error):
+        HUDOverlay(message: error.localizedDescription, isError: true) {
+          viewModel.localizationResult = nil
+        }
+      case .none:
+        EmptyView()
+      }
     }
   }
 

@@ -11,6 +11,11 @@ import LinguaLib
 struct ProjectFormView: View {
   @ObservedObject var viewModel: ProjectFormViewModel
   @Binding var isLocalizing: Bool
+  @Binding var aiInstallOption: LinguaAIInstallOption
+  let aiStatus: LinguaAIStatusReport?
+  let aiStatusError: Error?
+  let isRefreshingAIStatus: Bool
+  let isManagingAI: Bool
   
   @State private var apiKeyValid = false
   @State private var sheetIdValid = false
@@ -23,13 +28,16 @@ struct ProjectFormView: View {
   var onSave: ((Project) -> Void)? = nil
   var onDelete: ((Project) -> Void)? = nil
   var onLocalize: ((Project) -> Void)? = nil
-
+  var onInstallLinguaAI: ((Project) -> Void)? = nil
+  var onUninstallLinguaAI: ((Project) -> Void)? = nil
+  
   var body: some View {
     VStack(alignment: .leading) {
       Form {
         basicConfigurationFormSection()
         swiftCodeFormSection()
         filterSectionsFormSection()
+        linguaAIFormSection()
         iOSInfoFormSection()
       }
       .toolbar {
@@ -209,6 +217,70 @@ private extension ProjectFormView {
       }
     }
   }
+
+  @ViewBuilder
+  func linguaAIFormSection() -> some View {
+    Section(header: Text(Lingua.ProjectForm.linguaAiSection).font(.headline)) {
+      VStack(alignment: .leading, spacing: 8) {
+        HStack {
+          Text(Lingua.ProjectForm.linguaAiStatusTitle)
+            .bold()
+          Spacer()
+          Text(aiStatusLabel)
+            .foregroundStyle(aiStatusColor)
+        }
+
+        if let statusError = aiStatusError {
+          Text(statusError.localizedDescription)
+            .font(.subheadline)
+            .foregroundStyle(.red)
+        } else {
+          Text(aiStatusDetails)
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+        }
+
+        Text(Lingua.ProjectForm.linguaAiDescription)
+          .font(.subheadline)
+          .foregroundStyle(.secondary)
+      }
+      .padding(.vertical, 4)
+
+      Picker(Lingua.ProjectForm.linguaAiTargetPicker, selection: $aiInstallOption) {
+        ForEach(LinguaAIInstallOption.allCases) { option in
+          Text(option.label.capitalized)
+            .tag(option)
+        }
+      }
+      .disabled(!canManageLinguaAI)
+
+      HStack(spacing: 12) {
+        Button(action: installLinguaAI) {
+          HStack {
+            Image(systemName: "sparkles")
+            Text(Lingua.ProjectForm.linguaAiInstallButton)
+          }
+        }
+        .disabled(!canManageLinguaAI || isManagingAI)
+
+        if shouldShowUninstallButton {
+          Button(action: uninstallLinguaAI) {
+            HStack {
+              Image(systemName: "trash")
+              Text(Lingua.ProjectForm.linguaAiUninstallButton)
+            }
+          }
+          .disabled(isManagingAI)
+        }
+      }
+
+      if !canManageLinguaAI {
+        Text(Lingua.ProjectForm.linguaAiNeedsDirectory)
+          .font(.subheadline)
+          .foregroundStyle(.secondary)
+      }
+    }
+  }
   
   @ViewBuilder
   func iOSInfoFormSection() -> some View {
@@ -243,6 +315,59 @@ private extension ProjectFormView {
       }
     }
     .disabled(!viewModel.project.isValid() || isLocalizing)
+  }
+
+  var shouldShowUninstallButton: Bool {
+    aiStatus?.hasProjectInstallations == true
+  }
+
+  var canManageLinguaAI: Bool {
+    !viewModel.project.directoryPath.isEmpty
+  }
+
+  var aiStatusLabel: String {
+    if isRefreshingAIStatus {
+      return Lingua.ProjectForm.linguaAiCheckingStatus
+    }
+
+    if aiStatusError != nil {
+      return Lingua.ProjectForm.linguaAiStatusUnavailable
+    }
+
+    guard let aiStatus else {
+      return Lingua.ProjectForm.linguaAiStatusUnavailable
+    }
+
+    switch aiStatus.projectInstallationState {
+    case .notInstalled:
+      return Lingua.ProjectForm.linguaAiNotInstalled
+    case .partiallyInstalled:
+      return Lingua.ProjectForm.linguaAiPartiallyInstalled
+    case .installed:
+      return Lingua.ProjectForm.linguaAiInstalledStatus
+    }
+  }
+
+  var aiStatusDetails: String {
+    guard let aiStatus, aiStatus.hasProjectInstallations else {
+      return Lingua.ProjectForm.linguaAiNoTargetsInstalled
+    }
+
+    let installedTargets = aiStatus.projectInstalledTargets
+      .map { $0.label.capitalized }
+      .joined(separator: ", ")
+    return Lingua.ProjectForm.linguaAiInstalledTargets(installedTargets)
+  }
+
+  var aiStatusColor: Color {
+    switch aiStatus?.projectInstallationState {
+    case .installed:
+      return .green
+    case .partiallyInstalled:
+      return .orange
+    default:
+      return .secondary
+    }
   }
 }
 
@@ -285,5 +410,13 @@ private extension ProjectFormView {
         self.copied = false
       }
     }
+  }
+
+  func installLinguaAI() {
+    onInstallLinguaAI?(viewModel.project)
+  }
+
+  func uninstallLinguaAI() {
+    onUninstallLinguaAI?(viewModel.project)
   }
 }

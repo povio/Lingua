@@ -44,6 +44,52 @@ public enum Lingua {
 		public static let configurationSection = tr("ProjectForm", "configuration_section")
 		/// Copied to clipboard!
 		public static let copiedToClipboard = tr("ProjectForm", "copied_to_clipboard")
+		/// Check the current Lingua AI setup for this project and install or remove agent skills in the selected target.
+		public static let linguaAiDescription = tr("ProjectForm", "lingua_ai_description")
+		/// Lingua could not access the selected project directory.
+		public static let linguaAiDirectoryAccessError = tr("ProjectForm", "lingua_ai_directory_access_error")
+		/// Checking...
+		public static let linguaAiCheckingStatus = tr("ProjectForm", "lingua_ai_checking_status")
+		/// Install Lingua AI
+		public static let linguaAiInstallButton = tr("ProjectForm", "lingua_ai_install_button")
+		/// Lingua AI installed for %@.
+		public static func linguaAiInstalled(_ param1: String) -> String {
+			return tr("ProjectForm", "lingua_ai_installed", param1)
+		}
+		/// Installed
+		public static let linguaAiInstalledStatus = tr("ProjectForm", "lingua_ai_installed_status")
+		/// Installed targets: %@
+		public static func linguaAiInstalledTargets(_ param1: String) -> String {
+			return tr("ProjectForm", "lingua_ai_installed_targets", param1)
+		}
+		/// Installing Lingua AI...
+		public static let linguaAiInstalling = tr("ProjectForm", "lingua_ai_installing")
+		/// Select an output directory before using Lingua AI.
+		public static let linguaAiMissingDirectoryError = tr("ProjectForm", "lingua_ai_missing_directory_error")
+		/// Choose an output directory to use Lingua AI for this project.
+		public static let linguaAiNeedsDirectory = tr("ProjectForm", "lingua_ai_needs_directory")
+		/// No Lingua AI tools are installed for this project.
+		public static let linguaAiNoInstalledTargetsError = tr("ProjectForm", "lingua_ai_no_installed_targets_error")
+		/// No Lingua AI targets are installed in this project.
+		public static let linguaAiNoTargetsInstalled = tr("ProjectForm", "lingua_ai_no_targets_installed")
+		/// Not installed
+		public static let linguaAiNotInstalled = tr("ProjectForm", "lingua_ai_not_installed")
+		/// Partially installed
+		public static let linguaAiPartiallyInstalled = tr("ProjectForm", "lingua_ai_partially_installed")
+		/// Lingua AI
+		public static let linguaAiSection = tr("ProjectForm", "lingua_ai_section")
+		/// Uninstall Lingua AI
+		public static let linguaAiUninstallButton = tr("ProjectForm", "lingua_ai_uninstall_button")
+		/// Lingua AI uninstalled.
+		public static let linguaAiUninstalled = tr("ProjectForm", "lingua_ai_uninstalled")
+		/// Uninstalling Lingua AI...
+		public static let linguaAiUninstalling = tr("ProjectForm", "lingua_ai_uninstalling")
+		/// Status
+		public static let linguaAiStatusTitle = tr("ProjectForm", "lingua_ai_status_title")
+		/// Unavailable
+		public static let linguaAiStatusUnavailable = tr("ProjectForm", "lingua_ai_status_unavailable")
+		/// Install target
+		public static let linguaAiTargetPicker = tr("ProjectForm", "lingua_ai_target_picker")
 		/// Add section
 		public static let filteringAddSectionButtonTitle = tr("ProjectForm", "filtering_add_section_button_title")
 		/// Add the sections that you want to include into the project, otherwise if it is disabled all the sections will be included

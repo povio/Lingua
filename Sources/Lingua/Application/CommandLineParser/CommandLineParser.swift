@@ -99,12 +99,16 @@ private extension CommandLineParser {
   }
 
   func parseAICommand(arguments: [String]) throws -> CommandLineArguments {
+    let supportedTargets = LinguaAIInstallOption.supportedLabels
+    let supportedTargetList = supportedTargets.joined(separator: "|")
+    let supportedTargetSentence = supportedTargets.joined(separator: ", ")
+
     // Layout: lingua ai <install|uninstall|status> [--target claude|cursor|agents|both] [--global] [--force]
     try validateArgumentCount(arguments, count: 2)
     guard let sub = Command(rawValue: arguments[2].lowercased()),
           [.install, .uninstall, .status].contains(sub) else {
       throw CommandLineParsingError.invalidUsage(
-        "Unknown ai subcommand. Usage: lingua ai install|uninstall|status [--target claude|cursor|agents|both] [--global] [--force]"
+        "Unknown ai subcommand. Usage: lingua ai install|uninstall|status [--target \(supportedTargetList)] [--global] [--force]"
       )
     }
     var booleanFlags: Set<String> = []
@@ -117,13 +121,13 @@ private extension CommandLineParser {
       guard token.hasPrefix("--") else {
         // Unknown positional. Most likely the user typed `lingua ai install cursor` meaning
         // `--target cursor` — reject loudly instead of silently ignoring it.
-        if ["claude", "cursor", "agents", "both"].contains(token.lowercased()) {
+        if supportedTargets.contains(token.lowercased()) {
           throw CommandLineParsingError.invalidUsage(
-            "Did you mean '--target \(token.lowercased())'? Usage: lingua ai \(sub.rawValue) [--target claude|cursor|agents|both] [--global] [--force]"
+            "Did you mean '--target \(token.lowercased())'? Usage: lingua ai \(sub.rawValue) [--target \(supportedTargetList)] [--global] [--force]"
           )
         }
         throw CommandLineParsingError.invalidUsage(
-          "Unexpected argument '\(token)'. Usage: lingua ai \(sub.rawValue) [--target claude|cursor|agents|both] [--global] [--force]"
+          "Unexpected argument '\(token)'. Usage: lingua ai \(sub.rawValue) [--target \(supportedTargetList)] [--global] [--force]"
         )
       }
       let name = String(token.dropFirst(2))
@@ -131,13 +135,13 @@ private extension CommandLineParser {
       if name == "target" {
         guard i + 1 < tokens.count, !tokens[i + 1].hasPrefix("--") else {
           throw CommandLineParsingError.invalidUsage(
-            "--target requires a value (claude, cursor, agents, or both)."
+            "--target requires a value (\(supportedTargetSentence))."
           )
         }
         let value = tokens[i + 1].lowercased()
-        guard ["claude", "cursor", "agents", "both"].contains(value) else {
+        guard supportedTargets.contains(value) else {
           throw CommandLineParsingError.invalidUsage(
-            "Invalid --target '\(tokens[i + 1])'. Must be one of: claude, cursor, agents, both."
+            "Invalid --target '\(tokens[i + 1])'. Must be one of: \(supportedTargetSentence)."
           )
         }
         flags[name] = value

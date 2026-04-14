@@ -1,4 +1,5 @@
 import XCTest
+import LinguaLib
 @testable import Lingua
 
 final class SkillInstallerTests: XCTestCase {
@@ -210,6 +211,79 @@ final class SkillInstallerTests: XCTestCase {
       Set(SkillInstaller.autoDetectTargets(in: tempDir)),
       Set([.cursor, .claudeCode, .agents])
     )
+  }
+
+  func test_installOption_bestMatch_returnsBothForClaudeAndCursorTargets() {
+    XCTAssertEqual(
+      LinguaAIInstallOption.bestMatch(for: [.claudeCode, .cursor]),
+      .both
+    )
+  }
+
+  func test_statusReport_projectInstallationState_returnsInstalled_whenAnyTargetIsFullyInstalled() {
+    let fullyInstalled = LinguaAIScopeStatus(
+      target: LinguaAITarget.claudeCode.label,
+      scope: LinguaAIInstallScope.project.label,
+      directory: "/tmp/.claude/skills",
+      installed: BundledSkills.all.map(\.name)
+    )
+    let emptyProjectStatus = LinguaAIScopeStatus(
+      target: LinguaAITarget.cursor.label,
+      scope: LinguaAIInstallScope.project.label,
+      directory: "/tmp/.cursor/skills",
+      installed: []
+    )
+    let emptyGlobalStatus = LinguaAIScopeStatus(
+      target: LinguaAITarget.agents.label,
+      scope: LinguaAIInstallScope.global.label,
+      directory: "/tmp/.agents/skills",
+      installed: []
+    )
+
+    let report = LinguaAIStatusReport(
+      claudeCodeProject: fullyInstalled,
+      claudeCodeGlobal: emptyGlobalStatus,
+      cursorProject: emptyProjectStatus,
+      cursorGlobal: emptyGlobalStatus,
+      agentsProject: emptyProjectStatus,
+      agentsGlobal: emptyGlobalStatus
+    )
+
+    XCTAssertEqual(report.projectInstallationState, .installed)
+    XCTAssertEqual(report.projectInstalledTargets, [.claudeCode])
+  }
+
+  func test_statusReport_projectInstallationState_returnsPartiallyInstalled_whenAnyTargetIsPartial() {
+    let partialProjectStatus = LinguaAIScopeStatus(
+      target: LinguaAITarget.agents.label,
+      scope: LinguaAIInstallScope.project.label,
+      directory: "/tmp/.agents/skills",
+      installed: [BundledSkills.all[0].name]
+    )
+    let emptyStatus = LinguaAIScopeStatus(
+      target: LinguaAITarget.claudeCode.label,
+      scope: LinguaAIInstallScope.project.label,
+      directory: "/tmp/.claude/skills",
+      installed: []
+    )
+    let emptyGlobalStatus = LinguaAIScopeStatus(
+      target: LinguaAITarget.cursor.label,
+      scope: LinguaAIInstallScope.global.label,
+      directory: "/tmp/.cursor/skills",
+      installed: []
+    )
+
+    let report = LinguaAIStatusReport(
+      claudeCodeProject: emptyStatus,
+      claudeCodeGlobal: emptyGlobalStatus,
+      cursorProject: emptyStatus,
+      cursorGlobal: emptyGlobalStatus,
+      agentsProject: partialProjectStatus,
+      agentsGlobal: emptyGlobalStatus
+    )
+
+    XCTAssertEqual(report.projectInstallationState, .partiallyInstalled)
+    XCTAssertEqual(report.projectInstalledTargets, [.agents])
   }
 
   // MARK: - Helpers
