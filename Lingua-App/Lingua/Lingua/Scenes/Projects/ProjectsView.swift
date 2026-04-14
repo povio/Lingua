@@ -12,8 +12,15 @@ struct ProjectsView: View {
 
   var body: some View {
     NavigationSplitView {
-      ProjectListView()
-        .environmentObject(viewModel)
+      VStack(spacing: 0) {
+        ProjectListView()
+          .environmentObject(viewModel)
+          .layoutPriority(0)
+          .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
+        LinguaCLIInstallFooterView()
+          .layoutPriority(1)
+      }
+      .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
     } detail: {
       if let project = viewModel.selectedProject {
         projectFormView(for: project)
