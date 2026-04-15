@@ -104,6 +104,8 @@ struct LinguaAIManager {
       )
     } catch is DirectoryAccessor.Error {
       throw Error.directoryAccessUnavailable
+    } catch let error as Error {
+      throw error
     }
   }
 }

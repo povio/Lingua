@@ -183,7 +183,8 @@ public struct LinguaAIInstaller {
     force: Bool,
     projectDirectory: URL
   ) throws -> LinguaAIScopeStatus {
-    let destination = directory(for: scope, target: target, projectDirectory: projectDirectory)
+    let resolvedProjectDirectory = resolvedProjectDirectory(from: projectDirectory)
+    let destination = directory(for: scope, target: target, projectDirectory: resolvedProjectDirectory)
     try fileManager.createDirectory(at: destination, withIntermediateDirectories: true)
 
     var installed: [String] = []
@@ -224,7 +225,8 @@ public struct LinguaAIInstaller {
     target: LinguaAITarget,
     projectDirectory: URL
   ) throws -> LinguaAIScopeStatus {
-    let destination = directory(for: scope, target: target, projectDirectory: projectDirectory)
+    let resolvedProjectDirectory = resolvedProjectDirectory(from: projectDirectory)
+    let destination = directory(for: scope, target: target, projectDirectory: resolvedProjectDirectory)
     var removed: [String] = []
 
     for skill in skills {
@@ -254,13 +256,14 @@ public struct LinguaAIInstaller {
   }
 
   public func status(projectDirectory: URL) -> LinguaAIStatusReport {
-    LinguaAIStatusReport(
-      claudeCodeProject: scopeStatus(.project, target: .claudeCode, projectDirectory: projectDirectory),
-      claudeCodeGlobal: scopeStatus(.global, target: .claudeCode, projectDirectory: projectDirectory),
-      cursorProject: scopeStatus(.project, target: .cursor, projectDirectory: projectDirectory),
-      cursorGlobal: scopeStatus(.global, target: .cursor, projectDirectory: projectDirectory),
-      agentsProject: scopeStatus(.project, target: .agents, projectDirectory: projectDirectory),
-      agentsGlobal: scopeStatus(.global, target: .agents, projectDirectory: projectDirectory)
+    let resolvedProjectDirectory = resolvedProjectDirectory(from: projectDirectory)
+    return LinguaAIStatusReport(
+      claudeCodeProject: scopeStatus(.project, target: .claudeCode, projectDirectory: resolvedProjectDirectory),
+      claudeCodeGlobal: scopeStatus(.global, target: .claudeCode, projectDirectory: resolvedProjectDirectory),
+      cursorProject: scopeStatus(.project, target: .cursor, projectDirectory: resolvedProjectDirectory),
+      cursorGlobal: scopeStatus(.global, target: .cursor, projectDirectory: resolvedProjectDirectory),
+      agentsProject: scopeStatus(.project, target: .agents, projectDirectory: resolvedProjectDirectory),
+      agentsGlobal: scopeStatus(.global, target: .agents, projectDirectory: resolvedProjectDirectory)
     )
   }
 
@@ -269,7 +272,8 @@ public struct LinguaAIInstaller {
     target: LinguaAITarget,
     projectDirectory: URL
   ) -> LinguaAIScopeStatus {
-    let directory = directory(for: scope, target: target, projectDirectory: projectDirectory)
+    let resolvedProjectDirectory = resolvedProjectDirectory(from: projectDirectory)
+    let directory = directory(for: scope, target: target, projectDirectory: resolvedProjectDirectory)
     let present = skills.compactMap { skill in
       let path = filePath(for: skill, in: directory)
       return fileManager.fileExists(atPath: path.path) ? skill.name : nil
@@ -287,10 +291,11 @@ public struct LinguaAIInstaller {
     in directory: URL,
     fileManager: FileManager = .default
   ) -> [LinguaAITarget] {
+    let resolvedDirectory = LinguaAIProjectRootResolver.resolve(from: directory, fileManager: fileManager)
     var targets: [LinguaAITarget] = []
-    let cursorDirectory = directory.appendingPathComponent(".cursor")
-    let claudeDirectory = directory.appendingPathComponent(".claude")
-    let agentsDirectory = directory.appendingPathComponent(".agents")
+    let cursorDirectory = resolvedDirectory.appendingPathComponent(".cursor")
+    let claudeDirectory = resolvedDirectory.appendingPathComponent(".claude")
+    let agentsDirectory = resolvedDirectory.appendingPathComponent(".agents")
 
     if fileManager.fileExists(atPath: cursorDirectory.path) {
       targets.append(.cursor)
@@ -326,6 +331,10 @@ public struct LinguaAIInstaller {
     case .agents:
       return root.appendingPathComponent(".agents").appendingPathComponent("skills")
     }
+  }
+
+  private func resolvedProjectDirectory(from projectDirectory: URL) -> URL {
+    LinguaAIProjectRootResolver.resolve(from: projectDirectory, fileManager: fileManager)
   }
 
   private func filePath(

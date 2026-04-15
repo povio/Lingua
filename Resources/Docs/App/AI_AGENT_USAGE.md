@@ -16,13 +16,13 @@ lingua ai install
 
 Both Claude Code and Cursor 2.4+ implement the same Agent Skills standard (`<dir>/<skill>/SKILL.md`), so Lingua ships a single canonical body per skill and writes it verbatim to whichever target you pick.
 
-By default, `lingua ai install` **auto-detects which integration(s) to install** by looking at the cwd:
+By default, `lingua ai install` **walks up from the cwd to resolve the project root**, looking for `.git`, `.claude`, `.cursor`, or `.agents`, and then auto-detects which integration(s) to install there:
 
-- If `.cursor/` exists → installs into `.cursor/skills/lingua-*/SKILL.md`.
-- If `.claude/` exists → installs into `.claude/skills/lingua-*/SKILL.md`.
-- If `.agents/` exists → installs into `.agents/skills/lingua-*/SKILL.md`.
+- If `.cursor/` exists at the resolved root → installs into `.cursor/skills/lingua-*/SKILL.md`.
+- If `.claude/` exists at the resolved root → installs into `.claude/skills/lingua-*/SKILL.md`.
+- If `.agents/` exists at the resolved root → installs into `.agents/skills/lingua-*/SKILL.md`.
 - Any combination of the above → installs each detected target.
-- If none exist → falls back to Claude Code.
+- If none exist anywhere up the tree → falls back to Claude Code in the current directory.
 
 Commit whatever it writes. From that point forward, anyone who clones the repo gets the same agentic localization workflow for whichever layout you committed.
 

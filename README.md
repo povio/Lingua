@@ -198,11 +198,11 @@ Lingua ships with bundled [Agent Skills](https://agentskills.io/) for [Claude Co
 
 ```shell
 $ cd MyAwesomeApp
-$ lingua ai install        # auto-detects .claude/ / .cursor/ / .agents/ in cwd
+$ lingua ai install        # auto-detects from the repo root resolved from cwd
 $ git add .claude .cursor .agents  # commit whichever was written
 ```
 
-`lingua ai install` auto-detects which integration(s) to install from existing `.claude/`, `.cursor/`, and `.agents/` directories. Use `--target claude|cursor|agents|both` to choose explicitly (`both` = Claude + Cursor only; prefer `--target agents` when a shared `.agents/skills/` tree is enough), and `--global` to install under `~/.claude/skills/`, `~/.cursor/skills/`, or `~/.agents/skills/` instead.
+`lingua ai install` walks up from the current directory to find the project root by looking for `.git`, `.claude`, `.cursor`, or `.agents`, then auto-detects which integration(s) to install there. Use `--target claude|cursor|agents|both` to choose explicitly (`both` = Claude + Cursor only; prefer `--target agents` when a shared `.agents/skills/` tree is enough), and `--global` to install under `~/.claude/skills/`, `~/.cursor/skills/`, or `~/.agents/skills/` instead.
 
 Once installed, you can talk to your agent naturally — *"add an empty-state string for the favorites screen: 'No favorites yet'"* — and it will run `lingua find`, `lingua sections`, `lingua add`, `lingua sync`, and edit your view to use the new key.
 

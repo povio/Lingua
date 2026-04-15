@@ -70,7 +70,7 @@ New cases in `Sources/LinguaLib/Domain/Entities/Command.swift`, parsed by
 | `lingua delete <config> --section <s> --key <k>` | Delete a row from every language tab where it exists. Recovery escape hatch — works on misaligned tabs. |
 | `lingua sync <config> --platform ios\|android` | Same as today's `lingua ios` / `lingua android` but with structured JSON status output. The old commands remain as aliases. |
 | `lingua doctor <config>` | Verifies config, API key, service account, sheet reachability, output dirs writable, all language tabs aligned. Exits non-zero if any check fails. |
-| `lingua ai install [--target claude\|cursor\|agents\|both] [--global] [--force]` | Extracts bundled Agent Skills into `.claude/skills/lingua-*/SKILL.md` (Claude Code), `.cursor/skills/lingua-*/SKILL.md` (Cursor), and/or `.agents/skills/lingua-*/SKILL.md`. Default target is auto-detected from `.claude/`, `.cursor/`, and `.agents/` — cwd for project scope, `~` for `--global`. |
+| `lingua ai install [--target claude\|cursor\|agents\|both] [--global] [--force]` | Extracts bundled Agent Skills into `.claude/skills/lingua-*/SKILL.md` (Claude Code), `.cursor/skills/lingua-*/SKILL.md` (Cursor), and/or `.agents/skills/lingua-*/SKILL.md`. Default target is auto-detected from the resolved project root by walking up for `.git`, `.claude/`, `.cursor/`, and `.agents/` — `~` for `--global`. |
 | `lingua ai uninstall [--target claude\|cursor\|agents\|both] [--global]` | Removes installed skills. |
 | `lingua ai status` | Shows what's installed and where, across all five target × scope combinations (Claude, Cursor, and `.agents`, each project / global). |
 | `lingua help` (also `--help`, `-h`, or bare `lingua`) | Prints usage. |
@@ -291,10 +291,12 @@ so the same skill body is written verbatim to whichever target the user picks.
 `lingua ai install` resolves the target list in this order:
 
 1. Explicit `--target claude|cursor|agents|both` wins (`both` = Claude + Cursor only).
-2. Otherwise `SkillInstaller.autoDetectTargets(in: root)` checks for `.cursor/`, `.claude/`, and
-   `.agents/` directories: each present directory adds that target; none present → fall back to
-   `[.claudeCode]` so brand-new projects keep the original behavior. The detection root is the
-   cwd for project scope and the user's home directory for `--global`.
+2. Otherwise `SkillInstaller.autoDetectTargets(in: root)` first walks up from the starting
+   directory to resolve a project root by checking for `.git/`, `.cursor/`, `.claude/`, and
+   `.agents/`. It then checks the resolved root for `.cursor/`, `.claude/`, and `.agents/`:
+   each present directory adds that target; none present → fall back to `[.claudeCode]` so
+   brand-new projects keep the original behavior. The starting directory is the cwd for project
+   scope and the user's home directory for `--global`.
 
 The install / uninstall envelope reports per-target results plus a flag indicating whether
 auto-detection picked the targets, so callers can tell when they got the default vs an
@@ -349,7 +351,7 @@ rules baked into `lingua-add-translation` and `lingua-update-translation`:
 brew install lingua                # one-time, system-wide
 cd MyAwesomeApp                    # the consumer's iOS/Android project
 lingua config init                 # creates lingua_config.json (existing command)
-lingua ai install                  # drops .claude/skills/lingua-*/ in cwd
+lingua ai install                  # drops .claude/skills/lingua-*/ at the resolved repo root
 git add .claude lingua_config.json
 ```
 

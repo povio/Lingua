@@ -181,12 +181,13 @@ struct AgentCommandDispatcher {
     }
     let installer = LinguaAIInstaller()
     let scope: LinguaAIInstallScope = args.booleanFlags.contains("global") ? .global : .project
-    let projectDirectory = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+    let currentDirectory = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+    let projectDirectory = LinguaAIProjectRootResolver.resolve(from: currentDirectory)
 
     // Resolve targets: explicit --target wins, else auto-detect.
-    // For project scope, auto-detection looks at the cwd (where the project's `.cursor/`,
-    // `.claude/`, and `.agents/` directories live). For global scope, it looks at the user's
-    // home directory (where `~/.cursor/`, `~/.claude/`, and `~/.agents/` live).
+    // For project scope, auto-detection looks at the resolved project root (where the project's
+    // `.cursor/`, `.claude/`, and `.agents/` directories live). For global scope, it looks at the
+    // user's home directory (where `~/.cursor/`, `~/.claude/`, and `~/.agents/` live).
     let detectionRoot: URL = scope == .global
       ? FileManager.default.homeDirectoryForCurrentUser
       : projectDirectory

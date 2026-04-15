@@ -36,6 +36,8 @@ struct SkillInstaller {
   }
 
   private var currentProjectDirectory: URL {
-    URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+    LinguaAIProjectRootResolver.resolve(
+      from: URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+    )
   }
 }
