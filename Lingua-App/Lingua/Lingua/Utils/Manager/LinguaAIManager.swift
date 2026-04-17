@@ -20,102 +20,88 @@ struct LinguaAIManager {
   }
 
   let installer: LinguaAIInstaller
-  let directoryAccessor: DirectoryAccessor
+  let rootAccessor: LinguaAIProjectRootAccessor
 
   init(
     installer: LinguaAIInstaller = .init(),
-    directoryAccessor: DirectoryAccessor = .init()
+    rootAccessor: LinguaAIProjectRootAccessor = .init()
   ) {
     self.installer = installer
-    self.directoryAccessor = directoryAccessor
+    self.rootAccessor = rootAccessor
   }
 
-  func status(for project: Project) throws -> LinguaAIStatusReport {
-    try withProjectDirectory(for: project) { projectDirectory in
-      installer.status(projectDirectory: projectDirectory)
+  @MainActor
+  func status(for project: Project) async throws -> LinguaAIStatusReport {
+    try await withProjectRoot(for: project, promptIfNeeded: false) { projectRoot in
+      installer.status(projectDirectory: projectRoot)
     }
   }
 
+  @MainActor
   func suggestedInstallOption(
     for project: Project,
     status: LinguaAIStatusReport? = nil
-  ) throws -> LinguaAIInstallOption {
+  ) async throws -> LinguaAIInstallOption {
     if let status, status.hasProjectInstallations {
       return LinguaAIInstallOption.bestMatch(for: status.projectInstalledTargets)
     }
 
-    return try withProjectDirectory(for: project) { projectDirectory in
+    return try await withProjectRoot(for: project, promptIfNeeded: false) { projectRoot in
       LinguaAIInstallOption.bestMatch(
-        for: LinguaAIInstaller.autoDetectTargets(in: projectDirectory)
+        for: LinguaAIInstaller.autoDetectTargets(in: projectRoot)
       )
     }
   }
 
+  @MainActor
   func install(
     option: LinguaAIInstallOption,
     for project: Project,
     force: Bool = false
-  ) throws -> [LinguaAIScopeStatus] {
-    try withProjectDirectory(for: project) { projectDirectory in
+  ) async throws -> [LinguaAIScopeStatus] {
+    try await withProjectRoot(for: project, promptIfNeeded: true) { projectRoot in
       try installer.install(
         scope: .project,
         option: option,
         force: force,
-        projectDirectory: projectDirectory
+        projectDirectory: projectRoot
       )
     }
   }
 
+  @MainActor
   func uninstallInstalledTargets(
     for project: Project,
     status: LinguaAIStatusReport
-  ) throws -> [LinguaAIScopeStatus] {
+  ) async throws -> [LinguaAIScopeStatus] {
     let installedTargets = status.projectInstalledTargets
     guard !installedTargets.isEmpty else {
       throw Error.noInstalledTargets
     }
 
-    return try withProjectDirectory(for: project) { projectDirectory in
+    return try await withProjectRoot(for: project, promptIfNeeded: true) { projectRoot in
       try installedTargets.map { target in
         try installer.uninstall(
           scope: .project,
           target: target,
-          projectDirectory: projectDirectory
+          projectDirectory: projectRoot
         )
       }
     }
   }
 
-  private func withProjectDirectory<T>(
+  @MainActor
+  private func withProjectRoot<T>(
     for project: Project,
+    promptIfNeeded: Bool,
     perform: (URL) throws -> T
-  ) throws -> T {
-    guard project.aiProjectRootURL != nil else {
-      throw Error.missingProjectDirectory
-    }
-
-    do {
-      return try directoryAccessor.withAccessToDirectory(
-        fromBookmarkKey: project.bookmarkDataForDirectoryPath,
-        path: project.directoryPath,
-        perform: { accessedDirectory in
-          try perform(accessedDirectory)
-        }
-      )
-    } catch is DirectoryAccessor.Error {
-      throw Error.directoryAccessUnavailable
-    } catch let error as Error {
-      throw error
-    }
-  }
-}
-
-private extension Project {
-  var aiProjectRootURL: URL? {
-    guard !directoryPath.isEmpty else { return nil }
-    if let url = URL(string: directoryPath), url.isFileURL {
-      return url
-    }
-    return URL(fileURLWithPath: directoryPath)
+  ) async throws -> T {
+    try await rootAccessor.withAccessToProjectRoot(
+      for: project,
+      promptIfNeeded: promptIfNeeded,
+      perform: { grantedURL in
+        try perform(grantedURL)
+      }
+    )
   }
 }

@@ -74,8 +74,6 @@ public enum Lingua {
 		}
 		/// Checking...
 		public static let linguaAiCheckingStatus = tr("ProjectForm", "lingua_ai_checking_status")
-		/// Check the current Lingua AI setup for this project and install or remove agent skills in the selected target.
-		public static let linguaAiDescription = tr("ProjectForm", "lingua_ai_description")
 		/// Lingua could not access the selected project directory.
 		public static let linguaAiDirectoryAccessError = tr("ProjectForm", "lingua_ai_directory_access_error")
 		/// Install Lingua AI
@@ -104,6 +102,10 @@ public enum Lingua {
 		public static let linguaAiNotInstalled = tr("ProjectForm", "lingua_ai_not_installed")
 		/// Partially installed
 		public static let linguaAiPartiallyInstalled = tr("ProjectForm", "lingua_ai_partially_installed")
+		/// Lingua needs permission to write into the selected project root to install Lingua AI skills.
+		public static let linguaAiProjectRootAccessDenied = tr("ProjectForm", "lingua_ai_project_root_access_denied")
+		/// Grant Lingua write access to this folder so it can install Lingua AI skills (.claude/skills, .cursor/skills, .agents/skills).
+		public static let linguaAiProjectRootAccessPrompt = tr("ProjectForm", "lingua_ai_project_root_access_prompt")
 		/// Lingua AI
 		public static let linguaAiSection = tr("ProjectForm", "lingua_ai_section")
 		/// Status

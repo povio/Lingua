@@ -46,7 +46,6 @@ class ProjectsViewModel: ObservableObject {
     isManagingAI ? aiProgressText : Lingua.Projects.localizing
   }
   
-  private let directoryAccessor = DirectoryAccessor()
   private let localizationManager = LocalizationManager(directoryAccessor: DirectoryAccessor())
   private let aiManager = LinguaAIManager()
 }
@@ -71,7 +70,11 @@ extension ProjectsViewModel {
     guard let index = projects.firstIndex(where: { $0.id == project.id }) else { return }
     let previousProject = projects[index]
     projects[index] = project
-    
+
+    if previousProject.directoryPath != project.directoryPath {
+      UserDefaults.standard.removeObject(forKey: project.bookmarkDataForLinguaAISkillsInstallDirectory)
+    }
+
     if selectedProject?.id == project.id {
       updateSelectedProject(project)
       if previousProject.directoryPath != project.directoryPath {
@@ -152,22 +155,11 @@ extension ProjectsViewModel {
     }
 
     do {
-      _ = try directoryAccessor.withAccessToDirectory(
-        fromBookmarkKey: project.bookmarkDataForDirectoryPath,
-        path: project.directoryPath
-      ) { _ in
-        try aiManager.install(option: aiInstallOption, for: project)
-      }
-      
-      let updatedStatus = try directoryAccessor.withAccessToDirectory(
-        fromBookmarkKey: project.bookmarkDataForDirectoryPath,
-        path: project.directoryPath
-      ) { _ in
-        try aiManager.status(for: project)
-      }
-      
+      _ = try await aiManager.install(option: aiInstallOption, for: project)
+      let updatedStatus = try await aiManager.status(for: project)
+
       aiStatus = updatedStatus
-      aiInstallOption = try aiManager.suggestedInstallOption(for: project, status: updatedStatus)
+      aiInstallOption = try await aiManager.suggestedInstallOption(for: project, status: updatedStatus)
       aiResult = .success(Lingua.ProjectForm.linguaAiInstalled(aiInstallOption.label.capitalized))
     } catch {
       aiResult = .failure(error)
@@ -191,22 +183,11 @@ extension ProjectsViewModel {
     }
 
     do {
-      _ = try directoryAccessor.withAccessToDirectory(
-        fromBookmarkKey: project.bookmarkDataForDirectoryPath,
-        path: project.directoryPath
-      ) { _ in
-        try aiManager.uninstallInstalledTargets(for: project, status: status)
-      }
-      
-      let updatedStatus = try directoryAccessor.withAccessToDirectory(
-        fromBookmarkKey: project.bookmarkDataForDirectoryPath,
-        path: project.directoryPath
-      ) { _ in
-        try aiManager.status(for: project)
-      }
-      
+      _ = try await aiManager.uninstallInstalledTargets(for: project, status: status)
+      let updatedStatus = try await aiManager.status(for: project)
+
       aiStatus = updatedStatus
-      aiInstallOption = try aiManager.suggestedInstallOption(for: project, status: updatedStatus)
+      aiInstallOption = try await aiManager.suggestedInstallOption(for: project, status: updatedStatus)
       aiResult = .success(Lingua.ProjectForm.linguaAiUninstalled)
     } catch {
       aiResult = .failure(error)
@@ -239,15 +220,9 @@ private extension ProjectsViewModel {
     aiStatusError = nil
 
     do {
-      let status = try directoryAccessor.withAccessToDirectory(
-        fromBookmarkKey: project.bookmarkDataForDirectoryPath,
-        path: project.directoryPath
-      ) { _ in
-        try aiManager.status(for: project)
-      }
-      
+      let status = try await aiManager.status(for: project)
       aiStatus = status
-      aiInstallOption = try aiManager.suggestedInstallOption(for: project, status: status)
+      aiInstallOption = try await aiManager.suggestedInstallOption(for: project, status: status)
     } catch {
       aiStatus = nil
       aiStatusError = error

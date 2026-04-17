@@ -362,9 +362,53 @@ the skills invoke exists on their PATH.
 `lingua ai install --global` writes to `~/.claude/skills/` instead, for developers who work
 across many Lingua-using repos.
 
-App Store build: same skills, installable via a "Set up AI integration in folder…" menu item
-that uses an `NSOpenPanel` to get sandbox access to the project folder. (Not yet implemented
-in the App Store target — only the CLI today.)
+### macOS app install flow
+
+The macOS Lingua app (App Store build) drives the same installer through its **Lingua AI**
+section of the project form. Because the app is sandboxed, it cannot write into an arbitrary
+folder without first obtaining a user-granted security-scoped bookmark for it. That
+responsibility is isolated in a single helper
+([`LinguaAIProjectRootAccessor`](../../../Lingua-App/Lingua/Lingua/Utils/Helpers/LinguaAIProjectRootAccessor.swift)) —
+it is the only place in the app that touches `NSOpenPanel` or security-scoped URLs. Every
+Lingua AI operation goes through it so the rest of the app stays unaware of sandbox plumbing.
+
+**Components:**
+
+- [`LinguaAIFormSection`](../../../Lingua-App/Lingua/Lingua/Scenes/ProjectFormView/LinguaAIFormSection.swift) —
+  the UI: status row, install-target picker, Install / Uninstall buttons.
+- [`LinguaAIManager`](../../../Lingua-App/Lingua/Lingua/Utils/Manager/LinguaAIManager.swift) —
+  wraps `LinguaAIInstaller` (shared with the CLI) and routes every call through the accessor.
+  `status` / `suggestedInstallOption` pass `promptIfNeeded: false`; `install` / `uninstall`
+  pass `promptIfNeeded: true`.
+- `LinguaAIProjectRootAccessor` — resolves the correct folder URL (cached bookmark or fresh
+  `NSOpenPanel`), starts/stops the security-scoped resource around the closure, and persists
+  the bookmark to `UserDefaults`.
+
+**First install:** an `NSOpenPanel` opens with its starting directory set by
+`LinguaAIProjectRootResolver.resolve(from:)` (walks up from the project's configured
+`directoryPath` looking for `.git` / `.claude` / `.cursor` / `.agents`). The panel's
+`message` is `Lingua.ProjectForm.linguaAiProjectRootAccessPrompt`. If the user confirms, the
+granted URL's bookmark data is saved under `project.bookmarkDataForLinguaAISkillsInstallDirectory`
+in `UserDefaults`; `LinguaAIInstaller.install` then runs inside the security scope.
+
+**Subsequent installs / uninstalls:** the cached bookmark is reused silently. If it's stale
+(folder moved / renamed) or the user previously denied, the next click on Install falls back
+to the same `NSOpenPanel` flow and overwrites the stored bookmark.
+
+**Passive status / auto-detect:** `status(for:)` and `suggestedInstallOption(for:)` pass
+`promptIfNeeded: false`. Opening the form, switching projects, or refreshing therefore
+**never** pops a folder picker behind the user's back. A missing or invalid bookmark surfaces
+inline as `Lingua.ProjectForm.linguaAiDirectoryAccessError`; recovery happens on the next
+user-initiated Install. If the user cancels the `NSOpenPanel`, the error is surfaced as
+`Lingua.ProjectForm.linguaAiProjectRootAccessDenied`.
+
+**Bookmark invalidation:** `ProjectsViewModel.update(project:)` removes the stored bookmark
+whenever the project's `directoryPath` changes, so the next install triggers a fresh picker
+instead of silently writing into a folder the user thought they had unselected.
+
+The previous free-standing `linguaAiDescription` copy was removed from the form — the section
+now communicates through its status row and the Install / Uninstall buttons, with errors
+shown inline.
 
 ---
 
@@ -413,6 +457,17 @@ in the App Store target — only the CLI today.)
   targets share the same nested `<dir>/<name>/SKILL.md` layout.
 - `Processor/BundledSkills.swift` — the five skill bodies as Swift string literals.
 - `Processor/HelpText.swift` — usage text printed by `lingua help`.
+
+**macOS app (`Lingua-App/Lingua/Lingua/`):**
+
+- `Scenes/ProjectFormView/LinguaAIFormSection.swift` — the Lingua AI section of the project
+  form (status row, install target picker, Install / Uninstall buttons).
+- `Utils/Manager/LinguaAIManager.swift` — thin coordinator between the GUI and the shared
+  `LinguaAIInstaller`. Routes every call through the root accessor with the right
+  `promptIfNeeded` policy.
+- `Utils/Helpers/LinguaAIProjectRootAccessor.swift` — the only component that touches
+  `NSOpenPanel` and security-scoped bookmarks. Resolves, caches, and invalidates the
+  user-granted write access to the project root.
 
 **Tests (`Tests/LinguaTests/`):**
 

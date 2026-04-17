@@ -57,7 +57,6 @@ It serves as base language directory from where the Lingua.swift file will be cr
 "open_in_finder" = "Show in Finder";
 "lingua_ai_section" = "Lingua AI";
 "lingua_ai_status_title" = "Status";
-"lingua_ai_description" = "Check the current Lingua AI setup for this project and install or remove agent skills in the selected target.";
 "lingua_ai_target_picker" = "Install target";
 "lingua_ai_install_button" = "Install Lingua AI";
 "lingua_ai_uninstall_button" = "Uninstall Lingua AI";
@@ -76,3 +75,5 @@ It serves as base language directory from where the Lingua.swift file will be cr
 "lingua_ai_missing_directory_error" = "Select an output directory before using Lingua AI.";
 "lingua_ai_no_installed_targets_error" = "No Lingua AI tools are installed for this project.";
 "lingua_ai_directory_access_error" = "Lingua could not access the selected project directory.";
+"lingua_ai_project_root_access_denied" = "Lingua needs permission to write into the selected project root to install Lingua AI skills.";
+"lingua_ai_project_root_access_prompt" = "Grant Lingua write access to this folder so it can install Lingua AI skills (.claude/skills, .cursor/skills, .agents/skills).";

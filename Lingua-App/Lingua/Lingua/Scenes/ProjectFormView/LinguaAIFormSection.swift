@@ -27,10 +27,6 @@ struct LinguaAIFormSection: View {
             .font(.subheadline)
             .foregroundStyle(.secondary)
         }
-
-        Text(Lingua.ProjectForm.linguaAiDescription)
-          .font(.subheadline)
-          .foregroundStyle(.secondary)
       }
       .padding(.vertical, 4)
 

@@ -8,6 +8,20 @@ This guide walks you through the one-time setup and the agent surface.
 
 ## 1. Install the skills
 
+You can install the bundled skills either from the **macOS Lingua app** (nice for a one-off setup on your own machine) or from the **`lingua` command line** (required for CI, Linux, or Homebrew installs). Both paths drive the exact same installer and produce the same on-disk layout; pick whichever fits your workflow.
+
+### Installing from the macOS app
+
+1. Open your project in the [Lingua macOS app](https://apps.apple.com/us/app/lingua-tool/id6463116155).
+2. Scroll to the **Lingua AI** section of the project form.
+3. Pick an install target (Claude Code, Cursor, `.agents`, or a combination) and click **Install Lingua AI**.
+4. On the very first install, macOS shows a folder-picker asking you to grant the app write access to your project root. The picker opens on a folder automatically resolved by walking up from the project's output directory until it finds `.git`, `.claude`, `.cursor`, or `.agents` — so in most cases you just confirm. The grant is remembered per project.
+5. Subsequent installs/uninstalls reuse that grant silently. Changing the project's output directory invalidates it, and the picker will appear again the next time you click Install.
+
+If you don't see the status update, cancelled the picker, or the grant is no longer valid, the Lingua AI section will tell you — you can recover by clicking Install again, which re-opens the picker. The app never pops a folder picker on its own; it only ever appears in response to an explicit Install / Uninstall click.
+
+### Installing from the command line
+
 After installing Lingua via Homebrew (or downloading the binary), `cd` into your iOS / Android project and run:
 
 ```shell
