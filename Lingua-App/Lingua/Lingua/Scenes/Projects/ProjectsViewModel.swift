@@ -232,8 +232,6 @@ private extension ProjectsViewModel {
   }
 
   func updateSelectedProject(_ project: Project) {
-    withAnimation(.easeIn(duration: 0.5)) {
-      self.selectedProjectId = project.id
-    }
+    selectedProjectId = project.id
   }
 }
