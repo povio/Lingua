@@ -5,12 +5,18 @@
 //  Created by Egzon Arifi on 21/08/2023.
 //
 
+import AppKit
 import SwiftUI
 import LinguaLib
 
 struct ProjectFormView: View {
   @ObservedObject var viewModel: ProjectFormViewModel
   @Binding var isLocalizing: Bool
+  @Binding var aiInstallOption: LinguaAIInstallOption
+  let aiStatus: LinguaAIStatusReport?
+  let aiStatusError: Error?
+  let isRefreshingAIStatus: Bool
+  let isManagingAI: Bool
   
   @State private var apiKeyValid = false
   @State private var sheetIdValid = false
@@ -23,13 +29,16 @@ struct ProjectFormView: View {
   var onSave: ((Project) -> Void)? = nil
   var onDelete: ((Project) -> Void)? = nil
   var onLocalize: ((Project) -> Void)? = nil
-
+  var onInstallLinguaAI: ((Project) -> Void)? = nil
+  var onUninstallLinguaAI: ((Project) -> Void)? = nil
+  
   var body: some View {
     VStack(alignment: .leading) {
       Form {
         basicConfigurationFormSection()
         swiftCodeFormSection()
         filterSectionsFormSection()
+        linguaAIFormSection()
         iOSInfoFormSection()
       }
       .toolbar {
@@ -51,8 +60,8 @@ struct ProjectFormView: View {
         onSave?(newValue)
       }
       .formStyle(.grouped)
-      
-      deleteButton(for: viewModel.project).padding()
+
+      bottomActionBar(for: viewModel.project).padding()
     }
     .padding()
     .overlay {
@@ -209,6 +218,22 @@ private extension ProjectFormView {
       }
     }
   }
+
+  @ViewBuilder
+  func linguaAIFormSection() -> some View {
+    LinguaAIFormSection(
+      viewModel: LinguaAIFormSectionViewModel(
+        projectViewModel: viewModel,
+        aiStatus: aiStatus,
+        aiStatusError: aiStatusError,
+        isRefreshingAIStatus: isRefreshingAIStatus,
+        isManagingAI: isManagingAI
+      ),
+      aiInstallOption: $aiInstallOption,
+      onInstall: installLinguaAI,
+      onUninstall: uninstallLinguaAI
+    )
+  }
   
   @ViewBuilder
   func iOSInfoFormSection() -> some View {
@@ -231,7 +256,24 @@ private extension ProjectFormView {
         .foregroundColor(.red)
     })
   }
-  
+
+  @ViewBuilder
+  func bottomActionBar(for project: Project) -> some View {
+    HStack(alignment: .center) {
+      deleteButton(for: project)
+      Spacer(minLength: 16)
+      Button {
+        openOutputDirectoryInFinder(for: project)
+      } label: {
+        HStack {
+          Image(systemName: "folder")
+          Text(Lingua.ProjectForm.openInFinder)
+        }
+      }
+      .disabled(!canOpenOutputDirectoryInFinder(project))
+    }
+  }
+
   @ViewBuilder
   func localizeButton() -> some View {
     Button(action: {
@@ -285,5 +327,42 @@ private extension ProjectFormView {
         self.copied = false
       }
     }
+  }
+
+  func installLinguaAI() {
+    onInstallLinguaAI?(viewModel.project)
+  }
+
+  func uninstallLinguaAI() {
+    onUninstallLinguaAI?(viewModel.project)
+  }
+
+  func canOpenOutputDirectoryInFinder(_ project: Project) -> Bool {
+    let path = project.directoryPath
+    guard !path.isEmpty, let url = resolvedOutputDirectoryURL(from: path) else { return false }
+    var isDirectory: ObjCBool = false
+    guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory) else { return false }
+    return isDirectory.boolValue
+  }
+
+  func openOutputDirectoryInFinder(for project: Project) {
+    guard canOpenOutputDirectoryInFinder(project) else { return }
+    do {
+      try DirectoryAccessor().withAccessToDirectory(
+        fromBookmarkKey: project.bookmarkDataForDirectoryPath,
+        path: project.directoryPath
+      ) { url in
+        NSWorkspace.shared.activateFileViewerSelecting([url])
+      }
+    } catch {
+      debugPrint("ProjectFormView.openOutputDirectoryInFinder: \(error.localizedDescription)")
+    }
+  }
+
+  func resolvedOutputDirectoryURL(from path: String) -> URL? {
+    if let url = URL(string: path), url.isFileURL {
+      return url
+    }
+    return URL(fileURLWithPath: path)
   }
 }

@@ -12,37 +12,45 @@ struct ProjectListView: View {
   var shouldAddLocalizeButton: Bool = false
 
   var body: some View {
-    CustomSearchBar(searchTerm: $viewModel.searchTerm)
+    VStack(alignment: .leading, spacing: 0) {
+      CustomSearchBar(searchTerm: $viewModel.searchTerm)
 
-    List(viewModel.filteredProjects, selection: $viewModel.selectedProjectId) { project in
-      HStack {
-        ProjectItemView(project: project)
-          .swipeActions(edge: .trailing) {
-            duplicateButton(for: project)
-              .shouldAddView(!shouldAddLocalizeButton)
-            deletionButton(for: project)
-              .shouldAddView(!shouldAddLocalizeButton)
-          }
-          .contextMenu {
-            duplicateButton(for: project)
-              .shouldAddView(!shouldAddLocalizeButton)
-            deletionButton(for: project)
-              .shouldAddView(!shouldAddLocalizeButton)
-          }
+      List(selection: $viewModel.selectedProjectId) {
+        Section {
+          ForEach(viewModel.filteredProjects) { project in
+            HStack {
+              ProjectItemView(project: project)
+                .swipeActions(edge: .trailing) {
+                  duplicateButton(for: project)
+                    .shouldAddView(!shouldAddLocalizeButton)
+                  deletionButton(for: project)
+                    .shouldAddView(!shouldAddLocalizeButton)
+                }
+                .contextMenu {
+                  duplicateButton(for: project)
+                    .shouldAddView(!shouldAddLocalizeButton)
+                  deletionButton(for: project)
+                    .shouldAddView(!shouldAddLocalizeButton)
+                }
 
-        Button(action: {
-          Task { await viewModel.localizeProject(project) }
-        }) {
-          HStack {
-            Image(systemName: "globe")
-            Text(Lingua.ProjectForm.localizeButton)
+              Button(action: {
+                Task { await viewModel.localizeProject(project) }
+              }) {
+                HStack {
+                  Image(systemName: "globe")
+                  Text(Lingua.ProjectForm.localizeButton)
+                }
+              }
+              .shouldAddView(shouldAddLocalizeButton)
+            }
           }
         }
-        .shouldAddView(shouldAddLocalizeButton)
       }
+      .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity, alignment: .top)
+      .listStyle(.sidebar)
     }
+    .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity, alignment: .topLeading)
     .navigationSplitViewColumnWidth(min: 340, ideal: 340, max: 500)
-    .listStyle(DefaultListStyle())
     .toolbar {
       Button(action: {
         withAnimation {

@@ -170,6 +170,11 @@ final class CommandLineParserTests: XCTestCase {
     let parsed = try sut.parse(arguments: ["Lingua", "ai", "install", "--target", "both"])
     XCTAssertEqual(parsed.flags["target"], "both")
   }
+
+  func test_parse_ai_acceptsAgentsTarget() throws {
+    let parsed = try sut.parse(arguments: ["Lingua", "ai", "install", "--target", "agents"])
+    XCTAssertEqual(parsed.flags["target"], "agents")
+  }
 }
 
 private extension CommandLineParserTests {

@@ -1,12 +1,26 @@
 # Using Lingua with an AI coding agent
 
-Lingua ships with bundled [Agent Skills](https://agentskills.io/) for both [Claude Code](https://docs.claude.com/claude-code) and [Cursor](https://cursor.com/docs/skills) (2.4+), plus a set of agent-friendly subcommands. An AI agent in either editor can drive the entire localization loop autonomously: discover existing keys, add new translations to your Google Sheet (in the **right section**), regenerate platform files, and reference the new key in code.
+Lingua ships with bundled [Agent Skills](https://agentskills.io/) for [Claude Code](https://docs.claude.com/claude-code), [Cursor](https://cursor.com/docs/skills) (2.4+), and `.agents/skills/` (same standard layout), plus a set of agent-friendly subcommands. An AI coding agent can drive the entire localization loop autonomously: discover existing keys, add new translations to your Google Sheet (in the **right section**), regenerate platform files, and reference the new key in code.
 
 This guide walks you through the one-time setup and the agent surface.
 
 ---
 
 ## 1. Install the skills
+
+You can install the bundled skills either from the **macOS Lingua app** (nice for a one-off setup on your own machine) or from the **`lingua` command line** (required for CI, Linux, or Homebrew installs). Both paths drive the exact same installer and produce the same on-disk layout; pick whichever fits your workflow.
+
+### Installing from the macOS app
+
+1. Open your project in the [Lingua macOS app](https://apps.apple.com/us/app/lingua-tool/id6463116155).
+2. Scroll to the **Lingua AI** section of the project form.
+3. Pick an install target (Claude Code, Cursor, `.agents`, or a combination) and click **Install Lingua AI**.
+4. On the very first install, macOS shows a folder-picker asking you to grant the app write access to your project root. The picker opens on a folder automatically resolved by walking up from the project's output directory until it finds `.git`, `.claude`, `.cursor`, or `.agents` — so in most cases you just confirm. The grant is remembered per project.
+5. Subsequent installs/uninstalls reuse that grant silently. Changing the project's output directory invalidates it, and the picker will appear again the next time you click Install.
+
+If you don't see the status update, cancelled the picker, or the grant is no longer valid, the Lingua AI section will tell you — you can recover by clicking Install again, which re-opens the picker. The app never pops a folder picker on its own; it only ever appears in response to an explicit Install / Uninstall click.
+
+### Installing from the command line
 
 After installing Lingua via Homebrew (or downloading the binary), `cd` into your iOS / Android project and run:
 
@@ -16,32 +30,35 @@ lingua ai install
 
 Both Claude Code and Cursor 2.4+ implement the same Agent Skills standard (`<dir>/<skill>/SKILL.md`), so Lingua ships a single canonical body per skill and writes it verbatim to whichever target you pick.
 
-By default, `lingua ai install` **auto-detects which integration(s) to install** by looking at the cwd:
+By default, `lingua ai install` **walks up from the cwd to resolve the project root**, looking for `.git`, `.claude`, `.cursor`, or `.agents`, and then auto-detects which integration(s) to install there:
 
-- If `.cursor/` exists → installs into `.cursor/skills/lingua-*/SKILL.md`.
-- If `.claude/` exists → installs into `.claude/skills/lingua-*/SKILL.md`.
-- If both exist → installs both.
-- If neither exists → falls back to Claude Code.
+- If `.cursor/` exists at the resolved root → installs into `.cursor/skills/lingua-*/SKILL.md`.
+- If `.claude/` exists at the resolved root → installs into `.claude/skills/lingua-*/SKILL.md`.
+- If `.agents/` exists at the resolved root → installs into `.agents/skills/lingua-*/SKILL.md`.
+- Any combination of the above → installs each detected target.
+- If none exist anywhere up the tree → falls back to Claude Code in the current directory.
 
-Commit whatever it writes. From that point forward, anyone who clones the repo and opens Claude Code or Cursor automatically gets the same agentic localization workflow.
+Commit whatever it writes. From that point forward, anyone who clones the repo gets the same agentic localization workflow for whichever layout you committed.
 
 You can also pick a target explicitly:
 
 ```shell
 lingua ai install --target claude   # Claude Code only
 lingua ai install --target cursor   # Cursor only
-lingua ai install --target both     # both
+lingua ai install --target agents   # .agents/skills only (often enough for any agent)
+lingua ai install --target both     # Claude + Cursor
 ```
 
-For a personal install across all projects on your machine, use `--global`. Both targets support a global skills directory (`~/.claude/skills/` and `~/.cursor/skills/`):
+For a personal install across all projects on your machine, use `--global`. Each target has a global skills directory (`~/.claude/skills/`, `~/.cursor/skills/`, `~/.agents/skills/`):
 
 ```shell
 lingua ai install --global                  # auto-detects from ~
 lingua ai install --target cursor --global  # explicit
-lingua ai install --target both --global    # both
+lingua ai install --target both --global    # Claude + Cursor global
+lingua ai install --target agents --global  # ~/.agents/skills only
 ```
 
-To inspect what's installed (reports all four target × scope combinations):
+To inspect what's installed (reports all five target × scope combinations):
 
 ```shell
 lingua ai status

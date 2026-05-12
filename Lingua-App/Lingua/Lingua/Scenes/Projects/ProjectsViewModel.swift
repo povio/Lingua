@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import LinguaLib
 
 class ProjectsViewModel: ObservableObject {
   @Published var projects: [Project] = UserDefaults.getProjects() {
@@ -25,12 +26,28 @@ class ProjectsViewModel: ObservableObject {
     projects.first(where: { $0.id == selectedProjectId })
   }
   @Published var isLocalizing: Bool = false
+  @Published var isRefreshingAIStatus: Bool = false
+  @Published var isManagingAI: Bool = false
   @Published var showDeleteAlert: Bool = false
   @Published var projectToDelete: Project?
   @Published var localizationResult: Result<String, Error>?
+  @Published var aiResult: Result<String, Error>?
+  @Published var aiStatus: LinguaAIStatusReport?
+  @Published var aiStatusError: Error?
+  @Published var aiInstallOption: LinguaAIInstallOption = .claude
+  @Published var aiProgressText: String = ""
   @Published var selectedProjectId: UUID?
+
+  var isShowingProgressOverlay: Bool {
+    isLocalizing || isManagingAI
+  }
+
+  var progressOverlayText: String {
+    isManagingAI ? aiProgressText : Lingua.Projects.localizing
+  }
   
   private let localizationManager = LocalizationManager(directoryAccessor: DirectoryAccessor())
+  private let aiManager = LinguaAIManager()
 }
 
 // MARK: - Public Methods
@@ -39,6 +56,8 @@ extension ProjectsViewModel {
     guard let index = projects.firstIndex(where: { $0.id == project.id }) else { return }
     if projects[index] == selectedProject {
       selectedProjectId = nil
+      aiStatus = nil
+      aiStatusError = nil
     }
     projects.remove(at: index)
   }
@@ -49,10 +68,18 @@ extension ProjectsViewModel {
   
   func updateProject(_ project: Project) {
     guard let index = projects.firstIndex(where: { $0.id == project.id }) else { return }
+    let previousProject = projects[index]
     projects[index] = project
-    
+
+    if previousProject.directoryPath != project.directoryPath {
+      UserDefaults.standard.removeObject(forKey: project.bookmarkDataForLinguaAISkillsInstallDirectory)
+    }
+
     if selectedProject?.id == project.id {
       updateSelectedProject(project)
+      if previousProject.directoryPath != project.directoryPath {
+        Task { await refreshAIStatus(for: project) }
+      }
     }
   }
   
@@ -75,6 +102,17 @@ extension ProjectsViewModel {
   func selectFirstProject() {
     guard let firstProject = filteredProjects.first else { return }
     updateSelectedProject(firstProject)
+  }
+
+  @MainActor
+  func refreshSelectedProjectAIStatus() async {
+    guard let project = selectedProject else {
+      aiStatus = nil
+      aiStatusError = nil
+      return
+    }
+
+    await refreshAIStatus(for: project)
   }
   
   @MainActor
@@ -107,6 +145,60 @@ extension ProjectsViewModel {
     }
   }
 
+  @MainActor
+  func installLinguaAI(for project: Project) async {
+    withAnimation {
+      isManagingAI = true
+      aiProgressText = Lingua.ProjectForm.linguaAiInstalling
+      aiResult = nil
+      aiStatusError = nil
+    }
+
+    do {
+      _ = try await aiManager.install(option: aiInstallOption, for: project)
+      let updatedStatus = try await aiManager.status(for: project)
+
+      aiStatus = updatedStatus
+      aiInstallOption = try await aiManager.suggestedInstallOption(for: project, status: updatedStatus)
+      aiResult = .success(Lingua.ProjectForm.linguaAiInstalled(aiInstallOption.label.capitalized))
+    } catch {
+      aiResult = .failure(error)
+    }
+
+    withAnimation {
+      isManagingAI = false
+      aiProgressText = ""
+    }
+  }
+
+  @MainActor
+  func uninstallLinguaAI(for project: Project) async {
+    guard let status = aiStatus else { return }
+
+    withAnimation {
+      isManagingAI = true
+      aiProgressText = Lingua.ProjectForm.linguaAiUninstalling
+      aiResult = nil
+      aiStatusError = nil
+    }
+
+    do {
+      _ = try await aiManager.uninstallInstalledTargets(for: project, status: status)
+      let updatedStatus = try await aiManager.status(for: project)
+
+      aiStatus = updatedStatus
+      aiInstallOption = try await aiManager.suggestedInstallOption(for: project, status: updatedStatus)
+      aiResult = .success(Lingua.ProjectForm.linguaAiUninstalled)
+    } catch {
+      aiResult = .failure(error)
+    }
+
+    withAnimation {
+      isManagingAI = false
+      aiProgressText = ""
+    }
+  }
+
   func confirmDelete(for project: Project) {
     projectToDelete = project
     showDeleteAlert = true
@@ -115,9 +207,31 @@ extension ProjectsViewModel {
 
 // MARK: - Private methods
 private extension ProjectsViewModel {
-  func updateSelectedProject(_ project: Project) {
-    withAnimation(.easeIn(duration: 0.5)) {
-      self.selectedProjectId = project.id
+  @MainActor
+  func refreshAIStatus(for project: Project) async {
+    guard !project.directoryPath.isEmpty else {
+      aiStatus = nil
+      aiStatusError = nil
+      aiInstallOption = .claude
+      return
     }
+
+    isRefreshingAIStatus = true
+    aiStatusError = nil
+
+    do {
+      let status = try await aiManager.status(for: project)
+      aiStatus = status
+      aiInstallOption = try await aiManager.suggestedInstallOption(for: project, status: status)
+    } catch {
+      aiStatus = nil
+      aiStatusError = error
+    }
+
+    isRefreshingAIStatus = false
+  }
+
+  func updateSelectedProject(_ project: Project) {
+    selectedProjectId = project.id
   }
 }

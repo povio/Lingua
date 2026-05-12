@@ -171,65 +171,69 @@ struct AgentCommandDispatcher {
   }
 
   private func handleAICommand(_ args: CommandLineArguments) throws {
+    let supportedTargetList = LinguaAIInstallOption.supportedLabels.joined(separator: "|")
+
     guard let sub = args.subcommand else {
       throw AgentError(
         code: "invalid_command",
-        message: "Usage: lingua ai install|uninstall|status [--target claude|cursor|both] [--global] [--force]"
+        message: "Usage: lingua ai install|uninstall|status [--target \(supportedTargetList)] [--global] [--force]"
       )
     }
-    let installer = SkillInstaller()
-    let scope: SkillInstaller.Scope = args.booleanFlags.contains("global") ? .global : .project
-    let isGlobal: Bool = { if case .global = scope { return true } else { return false } }()
+    let installer = LinguaAIInstaller()
+    let scope: LinguaAIInstallScope = args.booleanFlags.contains("global") ? .global : .project
+    let currentDirectory = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+    let projectDirectory = LinguaAIProjectRootResolver.resolve(from: currentDirectory)
 
     // Resolve targets: explicit --target wins, else auto-detect.
-    // For project scope, auto-detection looks at the cwd (where the project's `.cursor/` and
-    // `.claude/` directories live). For global scope, it looks at the user's home directory
-    // (where `~/.cursor/` and `~/.claude/` live — these are typically present whenever the
-    // user has either editor installed).
-    let detectionRoot: URL = isGlobal
+    // For project scope, auto-detection looks at the resolved project root (where the project's
+    // `.cursor/`, `.claude/`, and `.agents/` directories live). For global scope, it looks at the
+    // user's home directory (where `~/.cursor/`, `~/.claude/`, and `~/.agents/` live).
+    let detectionRoot: URL = scope == .global
       ? FileManager.default.homeDirectoryForCurrentUser
-      : URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+      : projectDirectory
 
-    let targets: [SkillInstaller.Target]
+    let option: LinguaAIInstallOption
     let autoDetected: Bool
     if let raw = args.flags["target"] {
-      switch raw {
-      case "claude": targets = [.claudeCode]
-      case "cursor": targets = [.cursor]
-      case "both":   targets = [.claudeCode, .cursor]
-      default:
+      guard let explicitOption = LinguaAIInstallOption(rawValue: raw) else {
         throw AgentError(
           code: "invalid_target",
-          message: "--target must be one of: claude, cursor, both"
+          message: "--target must be one of: \(LinguaAIInstallOption.supportedLabels.joined(separator: ", "))"
         )
       }
+      option = explicitOption
       autoDetected = false
     } else {
-      targets = SkillInstaller.autoDetectTargets(in: detectionRoot)
+      let detectedTargets = LinguaAIInstaller.autoDetectTargets(in: detectionRoot)
+      option = LinguaAIInstallOption.bestMatch(for: detectedTargets)
       autoDetected = true
     }
 
     switch sub {
     case .install:
       let force = args.booleanFlags.contains("force")
-      var results: [SkillInstaller.ScopeStatus] = []
-      for target in targets {
-        results.append(try installer.install(scope: scope, target: target, force: force))
-      }
+      let results = try installer.install(
+        scope: scope,
+        option: option,
+        force: force,
+        projectDirectory: projectDirectory
+      )
       try output.emitSuccess(InstallResult(targets: results, autoDetected: autoDetected))
     case .uninstall:
-      var results: [SkillInstaller.ScopeStatus] = []
-      for target in targets {
-        results.append(try installer.uninstall(scope: scope, target: target))
-      }
+      let results = try installer.uninstall(
+        scope: scope,
+        option: option,
+        projectDirectory: projectDirectory
+      )
       try output.emitSuccess(InstallResult(targets: results, autoDetected: autoDetected))
     case .status:
-      let report = installer.status()
+      let report = installer.status(projectDirectory: projectDirectory)
       try output.emitSuccess(report)
     default:
       throw AgentError(code: "invalid_command", message: "Unknown ai subcommand")
     }
   }
+
 }
 
 private struct SyncResult: Encodable {
@@ -238,7 +242,7 @@ private struct SyncResult: Encodable {
 }
 
 private struct InstallResult: Encodable {
-  let targets: [SkillInstaller.ScopeStatus]
+  let targets: [LinguaAIScopeStatus]
   let autoDetected: Bool
 
   enum CodingKeys: String, CodingKey {

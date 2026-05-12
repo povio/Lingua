@@ -1,4 +1,5 @@
 import XCTest
+import LinguaLib
 @testable import Lingua
 
 final class SkillInstallerTests: XCTestCase {
@@ -96,6 +97,52 @@ final class SkillInstallerTests: XCTestCase {
     }
   }
 
+  // MARK: - Agents target
+
+  func test_install_agents_writesNestedSkillFiles() throws {
+    let tempDir = makeTempDir()
+    let installer = SkillInstaller()
+    try withCwd(tempDir) {
+      let result = try installer.install(scope: .project, target: .agents, force: false)
+      XCTAssertEqual(Set(result.installed), Set(BundledSkills.all.map(\.name)))
+    }
+
+    for skill in BundledSkills.all {
+      let path = tempDir
+        .appendingPathComponent(".agents")
+        .appendingPathComponent("skills")
+        .appendingPathComponent(skill.name)
+        .appendingPathComponent("SKILL.md")
+      XCTAssertTrue(FileManager.default.fileExists(atPath: path.path), "Missing skill: \(skill.name)")
+    }
+  }
+
+  func test_install_agents_isIdempotentWithoutForce() throws {
+    let tempDir = makeTempDir()
+    let installer = SkillInstaller()
+    try withCwd(tempDir) {
+      _ = try installer.install(scope: .project, target: .agents, force: false)
+      let second = try installer.install(scope: .project, target: .agents, force: false)
+      XCTAssertTrue(second.installed.isEmpty)
+    }
+  }
+
+  func test_uninstall_agents_removesAllSubdirectories() throws {
+    let tempDir = makeTempDir()
+    let installer = SkillInstaller()
+    try withCwd(tempDir) {
+      _ = try installer.install(scope: .project, target: .agents, force: false)
+      let removed = try installer.uninstall(scope: .project, target: .agents)
+      XCTAssertEqual(Set(removed.installed), Set(BundledSkills.all.map(\.name)))
+    }
+
+    let skillsDir = tempDir.appendingPathComponent(".agents").appendingPathComponent("skills")
+    if FileManager.default.fileExists(atPath: skillsDir.path) {
+      let contents = try FileManager.default.contentsOfDirectory(at: skillsDir, includingPropertiesForKeys: nil)
+      XCTAssertTrue(contents.isEmpty)
+    }
+  }
+
   // MARK: - Auto-detection
 
   func test_autoDetect_emptyDir_fallsBackToClaude() {
@@ -135,6 +182,108 @@ final class SkillInstallerTests: XCTestCase {
       Set(SkillInstaller.autoDetectTargets(in: tempDir)),
       Set([.cursor, .claudeCode])
     )
+  }
+
+  func test_autoDetect_agentsOnly() throws {
+    let tempDir = makeTempDir()
+    try FileManager.default.createDirectory(
+      at: tempDir.appendingPathComponent(".agents"),
+      withIntermediateDirectories: true
+    )
+    XCTAssertEqual(SkillInstaller.autoDetectTargets(in: tempDir), [.agents])
+  }
+
+  func test_autoDetect_cursorClaudeAndAgentsPresent() throws {
+    let tempDir = makeTempDir()
+    try FileManager.default.createDirectory(
+      at: tempDir.appendingPathComponent(".cursor"),
+      withIntermediateDirectories: true
+    )
+    try FileManager.default.createDirectory(
+      at: tempDir.appendingPathComponent(".claude"),
+      withIntermediateDirectories: true
+    )
+    try FileManager.default.createDirectory(
+      at: tempDir.appendingPathComponent(".agents"),
+      withIntermediateDirectories: true
+    )
+    XCTAssertEqual(
+      Set(SkillInstaller.autoDetectTargets(in: tempDir)),
+      Set([.cursor, .claudeCode, .agents])
+    )
+  }
+
+  func test_installOption_bestMatch_returnsBothForClaudeAndCursorTargets() {
+    XCTAssertEqual(
+      LinguaAIInstallOption.bestMatch(for: [.claudeCode, .cursor]),
+      .both
+    )
+  }
+
+  func test_statusReport_projectInstallationState_returnsInstalled_whenAnyTargetIsFullyInstalled() {
+    let fullyInstalled = LinguaAIScopeStatus(
+      target: LinguaAITarget.claudeCode.label,
+      scope: LinguaAIInstallScope.project.label,
+      directory: "/tmp/.claude/skills",
+      installed: BundledSkills.all.map(\.name)
+    )
+    let emptyProjectStatus = LinguaAIScopeStatus(
+      target: LinguaAITarget.cursor.label,
+      scope: LinguaAIInstallScope.project.label,
+      directory: "/tmp/.cursor/skills",
+      installed: []
+    )
+    let emptyGlobalStatus = LinguaAIScopeStatus(
+      target: LinguaAITarget.agents.label,
+      scope: LinguaAIInstallScope.global.label,
+      directory: "/tmp/.agents/skills",
+      installed: []
+    )
+
+    let report = LinguaAIStatusReport(
+      claudeCodeProject: fullyInstalled,
+      claudeCodeGlobal: emptyGlobalStatus,
+      cursorProject: emptyProjectStatus,
+      cursorGlobal: emptyGlobalStatus,
+      agentsProject: emptyProjectStatus,
+      agentsGlobal: emptyGlobalStatus
+    )
+
+    XCTAssertEqual(report.projectInstallationState, .installed)
+    XCTAssertEqual(report.projectInstalledTargets, [.claudeCode])
+  }
+
+  func test_statusReport_projectInstallationState_returnsPartiallyInstalled_whenAnyTargetIsPartial() {
+    let partialProjectStatus = LinguaAIScopeStatus(
+      target: LinguaAITarget.agents.label,
+      scope: LinguaAIInstallScope.project.label,
+      directory: "/tmp/.agents/skills",
+      installed: [BundledSkills.all[0].name]
+    )
+    let emptyStatus = LinguaAIScopeStatus(
+      target: LinguaAITarget.claudeCode.label,
+      scope: LinguaAIInstallScope.project.label,
+      directory: "/tmp/.claude/skills",
+      installed: []
+    )
+    let emptyGlobalStatus = LinguaAIScopeStatus(
+      target: LinguaAITarget.cursor.label,
+      scope: LinguaAIInstallScope.global.label,
+      directory: "/tmp/.cursor/skills",
+      installed: []
+    )
+
+    let report = LinguaAIStatusReport(
+      claudeCodeProject: emptyStatus,
+      claudeCodeGlobal: emptyGlobalStatus,
+      cursorProject: emptyStatus,
+      cursorGlobal: emptyGlobalStatus,
+      agentsProject: partialProjectStatus,
+      agentsGlobal: emptyGlobalStatus
+    )
+
+    XCTAssertEqual(report.projectInstallationState, .partiallyInstalled)
+    XCTAssertEqual(report.projectInstalledTargets, [.agents])
   }
 
   // MARK: - Helpers
