@@ -11,11 +11,16 @@ struct ProjectListView: View {
   @EnvironmentObject private var viewModel: ProjectsViewModel
   var shouldAddLocalizeButton: Bool = false
 
+  // Mirrors `viewModel.selectedProjectId` locally so that `List(selection:)` does not
+  // write directly to a `@Published` property during its own view-update phase,
+  // which causes the "Publishing changes from within view updates is not allowed" warning.
+  @State private var listSelection: UUID?
+
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
       CustomSearchBar(searchTerm: $viewModel.searchTerm)
 
-      List(selection: $viewModel.selectedProjectId) {
+      List(selection: $listSelection) {
         Section {
           ForEach(viewModel.filteredProjects) { project in
             HStack {
@@ -50,6 +55,19 @@ struct ProjectListView: View {
       .listStyle(.sidebar)
     }
     .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity, alignment: .topLeading)
+    .onAppear {
+      listSelection = viewModel.selectedProjectId
+    }
+    .onChange(of: viewModel.selectedProjectId) { newValue in
+      if listSelection != newValue {
+        listSelection = newValue
+      }
+    }
+    .onChange(of: listSelection) { newValue in
+      if viewModel.selectedProjectId != newValue {
+        viewModel.selectedProjectId = newValue
+      }
+    }
     .navigationSplitViewColumnWidth(min: 340, ideal: 340, max: 500)
     .toolbar {
       Button(action: {
