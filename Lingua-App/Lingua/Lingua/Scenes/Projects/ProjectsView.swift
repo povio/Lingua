@@ -17,7 +17,8 @@ struct ProjectsView: View {
           .environmentObject(viewModel)
           .layoutPriority(0)
           .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
-        LinguaCLIInstallFooterView()
+        Divider()
+        LinguaAIView()
           .layoutPriority(1)
       }
       .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
@@ -39,9 +40,6 @@ struct ProjectsView: View {
     .onAppear {
       viewModel.selectFirstProject()
     }
-    .task(id: viewModel.selectedProjectId) {
-      await viewModel.refreshSelectedProjectAIStatus()
-    }
     .alert(isPresented: $viewModel.showDeleteAlert) { deletionAlert() }
     .overlay(ProgressOverlay(
       isProgressing: viewModel.isShowingProgressOverlay,
@@ -57,11 +55,6 @@ private extension ProjectsView {
     ProjectFormView(
       viewModel: ProjectFormViewModel(project: project),
       isLocalizing: $viewModel.isLocalizing,
-      aiInstallOption: $viewModel.aiInstallOption,
-      aiStatus: viewModel.aiStatus,
-      aiStatusError: viewModel.aiStatusError,
-      isRefreshingAIStatus: viewModel.isRefreshingAIStatus,
-      isManagingAI: viewModel.isManagingAI,
       onSave: { updatedProject in
         viewModel.updateProject(updatedProject)
       },
@@ -70,12 +63,6 @@ private extension ProjectsView {
       },
       onLocalize: { projectToLocalize in
         Task { await viewModel.localizeProject(projectToLocalize) }
-      },
-      onInstallLinguaAI: { projectToInstall in
-        Task { await viewModel.installLinguaAI(for: projectToInstall) }
-      },
-      onUninstallLinguaAI: { projectToUninstall in
-        Task { await viewModel.uninstallLinguaAI(for: projectToUninstall) }
       }
     )
     .navigationSplitViewColumnWidth(min: 400, ideal: 600)
@@ -83,27 +70,17 @@ private extension ProjectsView {
 
   @ViewBuilder
   func hudResultOverlay() -> some View {
-    if case .success(let message) = viewModel.aiResult {
+    switch viewModel.localizationResult {
+    case .success(let message):
       HUDOverlay(message: message, isError: false) {
-        viewModel.aiResult = nil
+        viewModel.localizationResult = nil
       }
-    } else if case .failure(let error) = viewModel.aiResult {
+    case .failure(let error):
       HUDOverlay(message: error.localizedDescription, isError: true) {
-        viewModel.aiResult = nil
+        viewModel.localizationResult = nil
       }
-    } else {
-      switch viewModel.localizationResult {
-      case .success(let message):
-        HUDOverlay(message: message, isError: false) {
-          viewModel.localizationResult = nil
-        }
-      case .failure(let error):
-        HUDOverlay(message: error.localizedDescription, isError: true) {
-          viewModel.localizationResult = nil
-        }
-      case .none:
-        EmptyView()
-      }
+    case .none:
+      EmptyView()
     }
   }
 

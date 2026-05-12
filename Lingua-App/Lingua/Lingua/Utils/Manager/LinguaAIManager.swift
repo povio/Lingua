@@ -3,14 +3,11 @@ import LinguaLib
 
 struct LinguaAIManager {
   enum Error: LocalizedError {
-    case missingProjectDirectory
     case noInstalledTargets
     case directoryAccessUnavailable
 
     var errorDescription: String? {
       switch self {
-      case .missingProjectDirectory:
-        return Lingua.ProjectForm.linguaAiMissingDirectoryError
       case .noInstalledTargets:
         return Lingua.ProjectForm.linguaAiNoInstalledTargetsError
       case .directoryAccessUnavailable:
@@ -19,47 +16,76 @@ struct LinguaAIManager {
     }
   }
 
-  let installer: LinguaAIInstaller
-  let rootAccessor: LinguaAIProjectRootAccessor
+  let globalHomeAccessor: LinguaAIGlobalHomeAccessor
 
-  init(
-    installer: LinguaAIInstaller = .init(),
-    rootAccessor: LinguaAIProjectRootAccessor = .init()
-  ) {
-    self.installer = installer
-    self.rootAccessor = rootAccessor
+  init(globalHomeAccessor: LinguaAIGlobalHomeAccessor = .init()) {
+    self.globalHomeAccessor = globalHomeAccessor
   }
 
   @MainActor
-  func status(for project: Project) async throws -> LinguaAIStatusReport {
-    // First-open / fresh project: no bookmark yet means "not installed", not an error.
-    // Surfacing it as an error renders a red banner the moment the project is selected.
+  func globalStatus() async throws -> LinguaAIStatusReport {
+    // First-open: no bookmark yet means "not installed", not an error.
     do {
-      return try await withProjectRoot(for: project, promptIfNeeded: false) { projectRoot in
-        installer.status(projectDirectory: projectRoot)
+      return try await globalHomeAccessor.withAccessToGlobalHome(promptIfNeeded: false) { homeURL in
+        LinguaAIInstaller(homeDirectory: homeURL).status(projectDirectory: homeURL)
       }
-    } catch LinguaAIProjectRootAccessor.Error.projectRootBookmarkInvalid {
+    } catch LinguaAIGlobalHomeAccessor.Error.globalHomeBookmarkInvalid {
       return Self.emptyStatusReport
     }
   }
 
   @MainActor
-  func suggestedInstallOption(
-    for project: Project,
+  func suggestedGlobalInstallOption(
     status: LinguaAIStatusReport? = nil
   ) async throws -> LinguaAIInstallOption {
-    if let status, status.hasProjectInstallations {
-      return LinguaAIInstallOption.bestMatch(for: status.projectInstalledTargets)
+    if let status, status.hasGlobalInstallations {
+      return LinguaAIInstallOption.bestMatch(for: status.globalInstalledTargets)
     }
 
     do {
-      return try await withProjectRoot(for: project, promptIfNeeded: false) { projectRoot in
+      return try await globalHomeAccessor.withAccessToGlobalHome(promptIfNeeded: false) { homeURL in
         LinguaAIInstallOption.bestMatch(
-          for: LinguaAIInstaller.autoDetectTargets(in: projectRoot)
+          for: LinguaAIInstaller.autoDetectTargets(in: homeURL)
         )
       }
-    } catch LinguaAIProjectRootAccessor.Error.projectRootBookmarkInvalid {
+    } catch LinguaAIGlobalHomeAccessor.Error.globalHomeBookmarkInvalid {
       return .claude
+    }
+  }
+
+  @MainActor
+  func installGlobally(
+    option: LinguaAIInstallOption,
+    force: Bool = false
+  ) async throws -> [LinguaAIScopeStatus] {
+    try await globalHomeAccessor.withAccessToGlobalHome(promptIfNeeded: true) { homeURL in
+      try LinguaAIInstaller(homeDirectory: homeURL).install(
+        scope: .global,
+        option: option,
+        force: force,
+        projectDirectory: homeURL
+      )
+    }
+  }
+
+  @MainActor
+  func uninstallGloballyInstalledTargets(
+    status: LinguaAIStatusReport
+  ) async throws -> [LinguaAIScopeStatus] {
+    let installedTargets = status.globalInstalledTargets
+    guard !installedTargets.isEmpty else {
+      throw Error.noInstalledTargets
+    }
+
+    return try await globalHomeAccessor.withAccessToGlobalHome(promptIfNeeded: true) { homeURL in
+      let globalInstaller = LinguaAIInstaller(homeDirectory: homeURL)
+      return try installedTargets.map { target in
+        try globalInstaller.uninstall(
+          scope: .global,
+          target: target,
+          projectDirectory: homeURL
+        )
+      }
     }
   }
 
@@ -76,56 +102,28 @@ struct LinguaAIManager {
       agentsGlobal: empty(.agents, .global)
     )
   }
+}
 
-  @MainActor
-  func install(
-    option: LinguaAIInstallOption,
-    for project: Project,
-    force: Bool = false
-  ) async throws -> [LinguaAIScopeStatus] {
-    try await withProjectRoot(for: project, promptIfNeeded: true) { projectRoot in
-      try installer.install(
-        scope: .project,
-        option: option,
-        force: force,
-        projectDirectory: projectRoot
-      )
+// MARK: - Global-scope status accessors
+extension LinguaAIStatusReport {
+  var globalInstalledTargets: [LinguaAITarget] {
+    globalStatuses.compactMap { status in
+      guard status.isInstalled else { return nil }
+      return status.targetValue
     }
   }
 
-  @MainActor
-  func uninstallInstalledTargets(
-    for project: Project,
-    status: LinguaAIStatusReport
-  ) async throws -> [LinguaAIScopeStatus] {
-    let installedTargets = status.projectInstalledTargets
-    guard !installedTargets.isEmpty else {
-      throw Error.noInstalledTargets
-    }
-
-    return try await withProjectRoot(for: project, promptIfNeeded: true) { projectRoot in
-      try installedTargets.map { target in
-        try installer.uninstall(
-          scope: .project,
-          target: target,
-          projectDirectory: projectRoot
-        )
-      }
-    }
+  var hasGlobalInstallations: Bool {
+    globalStatuses.contains(where: \.isInstalled)
   }
 
-  @MainActor
-  private func withProjectRoot<T>(
-    for project: Project,
-    promptIfNeeded: Bool,
-    perform: (URL) throws -> T
-  ) async throws -> T {
-    try await rootAccessor.withAccessToProjectRoot(
-      for: project,
-      promptIfNeeded: promptIfNeeded,
-      perform: { grantedURL in
-        try perform(grantedURL)
-      }
-    )
+  var globalInstallationState: LinguaAIInstallationState {
+    if globalStatuses.allSatisfy({ !$0.isInstalled }) {
+      return .notInstalled
+    }
+    if globalStatuses.contains(where: { $0.installationState == .partiallyInstalled }) {
+      return .partiallyInstalled
+    }
+    return .installed
   }
 }

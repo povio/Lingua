@@ -9,6 +9,3 @@
 "localizing" = "Localizing...";
 "localized_message" = "\"%@\" has been successfully localized.";
 "list_section_header" = "Projects";
-"cli_install_title" = "Command-line tool";
-"cli_install_description" = "Install the Lingua CLI with Homebrew. In Terminal, run:\n\nbrew tap poviolabs/lingua\nbrew install lingua";
-"cli_install_copy_button" = "Copy install commands";

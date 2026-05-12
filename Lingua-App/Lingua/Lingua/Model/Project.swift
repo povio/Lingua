@@ -88,10 +88,6 @@ extension Project {
     "\(id.uuidString)stringsDirectory"
   }
 
-  var bookmarkDataForLinguaAISkillsInstallDirectory: String {
-    "\(id.uuidString)linguaAISkillsInstallDirectory"
-  }
-  
   var icon: Image {
     switch type {
     case .ios:

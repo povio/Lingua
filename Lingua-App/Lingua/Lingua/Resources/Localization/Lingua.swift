@@ -74,8 +74,14 @@ public enum Lingua {
 		}
 		/// Checking...
 		public static let linguaAiCheckingStatus = tr("ProjectForm", "lingua_ai_checking_status")
-		/// Lingua could not access the selected project directory.
+		/// Copy & open Terminal
+		public static let linguaAiCliOpenTerminalButton = tr("ProjectForm", "lingua_ai_cli_open_terminal_button")
+		/// Lingua could not access the selected directory.
 		public static let linguaAiDirectoryAccessError = tr("ProjectForm", "lingua_ai_directory_access_error")
+		/// Lingua needs permission to write into your home folder to install Lingua AI skills.
+		public static let linguaAiGlobalHomeAccessDenied = tr("ProjectForm", "lingua_ai_global_home_access_denied")
+		/// Grant Lingua write access to your home folder so it can install Lingua AI skills (~/.claude/skills, ~/.cursor/skills, ~/.agents/skills).
+		public static let linguaAiGlobalHomeAccessPrompt = tr("ProjectForm", "lingua_ai_global_home_access_prompt")
 		/// Install Lingua AI
 		public static let linguaAiInstallButton = tr("ProjectForm", "lingua_ai_install_button")
 		/// Lingua AI installed for %@.
@@ -88,38 +94,32 @@ public enum Lingua {
 		public static func linguaAiInstalledTargets(_ param1: String) -> String {
 			return tr("ProjectForm", "lingua_ai_installed_targets", param1)
 		}
-		/// Installing Lingua AI...
-		public static let linguaAiInstalling = tr("ProjectForm", "lingua_ai_installing")
-		/// Select an output directory before using Lingua AI.
-		public static let linguaAiMissingDirectoryError = tr("ProjectForm", "lingua_ai_missing_directory_error")
-		/// Choose an output directory to use Lingua AI for this project.
-		public static let linguaAiNeedsDirectory = tr("ProjectForm", "lingua_ai_needs_directory")
-		/// No Lingua AI tools are installed for this project.
+		/// No Lingua AI tools are installed.
 		public static let linguaAiNoInstalledTargetsError = tr("ProjectForm", "lingua_ai_no_installed_targets_error")
-		/// No Lingua AI targets are installed in this project.
+		/// No Lingua AI targets are installed.
 		public static let linguaAiNoTargetsInstalled = tr("ProjectForm", "lingua_ai_no_targets_installed")
 		/// Not installed
 		public static let linguaAiNotInstalled = tr("ProjectForm", "lingua_ai_not_installed")
 		/// Partially installed
 		public static let linguaAiPartiallyInstalled = tr("ProjectForm", "lingua_ai_partially_installed")
-		/// Lingua needs permission to write into the selected project root to install Lingua AI skills.
-		public static let linguaAiProjectRootAccessDenied = tr("ProjectForm", "lingua_ai_project_root_access_denied")
-		/// Grant Lingua write access to this folder so it can install Lingua AI skills (.claude/skills, .cursor/skills, .agents/skills).
-		public static let linguaAiProjectRootAccessPrompt = tr("ProjectForm", "lingua_ai_project_root_access_prompt")
-		/// Lingua AI
-		public static let linguaAiSection = tr("ProjectForm", "lingua_ai_section")
-		/// Status
-		public static let linguaAiStatusTitle = tr("ProjectForm", "lingua_ai_status_title")
+		/// Setup required
+		public static let linguaAiSetupRequired = tr("ProjectForm", "lingua_ai_setup_required")
+		/// Install AI skills
+		public static let linguaAiSkillsTitle = tr("ProjectForm", "lingua_ai_skills_title")
 		/// Unavailable
 		public static let linguaAiStatusUnavailable = tr("ProjectForm", "lingua_ai_status_unavailable")
+		/// Step 1 — Install the Lingua CLI
+		public static let linguaAiStep1Title = tr("ProjectForm", "lingua_ai_step_1_title")
+		/// Step 2 — Install AI skills
+		public static let linguaAiStep2Title = tr("ProjectForm", "lingua_ai_step_2_title")
 		/// Install target
 		public static let linguaAiTargetPicker = tr("ProjectForm", "lingua_ai_target_picker")
 		/// Uninstall Lingua AI
 		public static let linguaAiUninstallButton = tr("ProjectForm", "lingua_ai_uninstall_button")
 		/// Lingua AI uninstalled.
 		public static let linguaAiUninstalled = tr("ProjectForm", "lingua_ai_uninstalled")
-		/// Uninstalling Lingua AI...
-		public static let linguaAiUninstalling = tr("ProjectForm", "lingua_ai_uninstalling")
+		/// Lingua AI
+		public static let linguaAiTitle = tr("ProjectForm", "lingua_ai_title")
 		/// Lingua.swift Directory *
 		public static let linguaSwiftOutputDirectory = tr("ProjectForm", "lingua_swift_output_directory")
 		/// This should be the directory where you want to store the generated Lingua.swift file
@@ -160,12 +160,6 @@ public enum Lingua {
 	}
 
 	public enum Projects {
-		/// Copy install commands
-		public static let cliInstallCopyButton = tr("Projects", "cli_install_copy_button")
-		/// Install the Lingua CLI with Homebrew. In Terminal, run:\n\nbrew tap poviolabs/lingua\nbrew install lingua
-		public static let cliInstallDescription = tr("Projects", "cli_install_description")
-		/// Command-line tool
-		public static let cliInstallTitle = tr("Projects", "cli_install_title")
 		/// %@ copy
 		public static func copyProject(_ param1: String) -> String {
 			return tr("Projects", "copy_project", param1)

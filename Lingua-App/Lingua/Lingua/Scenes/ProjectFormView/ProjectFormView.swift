@@ -12,12 +12,7 @@ import LinguaLib
 struct ProjectFormView: View {
   @ObservedObject var viewModel: ProjectFormViewModel
   @Binding var isLocalizing: Bool
-  @Binding var aiInstallOption: LinguaAIInstallOption
-  let aiStatus: LinguaAIStatusReport?
-  let aiStatusError: Error?
-  let isRefreshingAIStatus: Bool
-  let isManagingAI: Bool
-  
+
   @State private var apiKeyValid = false
   @State private var sheetIdValid = false
   @State private var titleValid = true
@@ -29,8 +24,6 @@ struct ProjectFormView: View {
   var onSave: ((Project) -> Void)? = nil
   var onDelete: ((Project) -> Void)? = nil
   var onLocalize: ((Project) -> Void)? = nil
-  var onInstallLinguaAI: ((Project) -> Void)? = nil
-  var onUninstallLinguaAI: ((Project) -> Void)? = nil
   
   var body: some View {
     VStack(alignment: .leading) {
@@ -38,7 +31,6 @@ struct ProjectFormView: View {
         basicConfigurationFormSection()
         swiftCodeFormSection()
         filterSectionsFormSection()
-        linguaAIFormSection()
         iOSInfoFormSection()
       }
       .toolbar {
@@ -220,22 +212,6 @@ private extension ProjectFormView {
   }
 
   @ViewBuilder
-  func linguaAIFormSection() -> some View {
-    LinguaAIFormSection(
-      viewModel: LinguaAIFormSectionViewModel(
-        projectViewModel: viewModel,
-        aiStatus: aiStatus,
-        aiStatusError: aiStatusError,
-        isRefreshingAIStatus: isRefreshingAIStatus,
-        isManagingAI: isManagingAI
-      ),
-      aiInstallOption: $aiInstallOption,
-      onInstall: installLinguaAI,
-      onUninstall: uninstallLinguaAI
-    )
-  }
-  
-  @ViewBuilder
   func iOSInfoFormSection() -> some View {
     if viewModel.project.type == .ios {
       Section(Lingua.ProjectForm.infoHeader) {
@@ -327,14 +303,6 @@ private extension ProjectFormView {
         self.copied = false
       }
     }
-  }
-
-  func installLinguaAI() {
-    onInstallLinguaAI?(viewModel.project)
-  }
-
-  func uninstallLinguaAI() {
-    onUninstallLinguaAI?(viewModel.project)
   }
 
   func canOpenOutputDirectoryInFinder(_ project: Project) -> Bool {
