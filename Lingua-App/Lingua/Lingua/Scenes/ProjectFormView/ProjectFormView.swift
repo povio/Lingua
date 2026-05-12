@@ -286,59 +286,6 @@ private extension ProjectFormView {
     }
     .disabled(!viewModel.project.isValid() || isLocalizing)
   }
-
-  var shouldShowUninstallButton: Bool {
-    aiStatus?.hasProjectInstallations == true
-  }
-
-  var canManageLinguaAI: Bool {
-    !viewModel.project.directoryPath.isEmpty
-  }
-
-  var aiStatusLabel: String {
-    if isRefreshingAIStatus {
-      return Lingua.ProjectForm.linguaAiCheckingStatus
-    }
-
-    if aiStatusError != nil {
-      return Lingua.ProjectForm.linguaAiStatusUnavailable
-    }
-
-    guard let aiStatus else {
-      return Lingua.ProjectForm.linguaAiStatusUnavailable
-    }
-
-    switch aiStatus.projectInstallationState {
-    case .notInstalled:
-      return Lingua.ProjectForm.linguaAiNotInstalled
-    case .partiallyInstalled:
-      return Lingua.ProjectForm.linguaAiPartiallyInstalled
-    case .installed:
-      return Lingua.ProjectForm.linguaAiInstalledStatus
-    }
-  }
-
-  var aiStatusDetails: String {
-    guard let aiStatus, aiStatus.hasProjectInstallations else {
-      return Lingua.ProjectForm.linguaAiNoTargetsInstalled
-    }
-
-    let installedTargets = aiStatus.projectInstalledTargets
-      .map { $0.label.capitalized }
-      .joined(separator: ", ")
-    return Lingua.ProjectForm.linguaAiInstalledTargets(installedTargets)
-  }
-
-  var aiStatusColor: Color {
-    switch aiStatus?.projectInstallationState {
-    case .installed:
-      return .green
-    case .partiallyInstalled:
-      return .orange
-    default:
-      return .secondary
-    }
-  }
 }
 
 // MARK: - Private Methods

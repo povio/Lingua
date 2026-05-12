@@ -32,8 +32,14 @@ struct LinguaAIManager {
 
   @MainActor
   func status(for project: Project) async throws -> LinguaAIStatusReport {
-    try await withProjectRoot(for: project, promptIfNeeded: false) { projectRoot in
-      installer.status(projectDirectory: projectRoot)
+    // First-open / fresh project: no bookmark yet means "not installed", not an error.
+    // Surfacing it as an error renders a red banner the moment the project is selected.
+    do {
+      return try await withProjectRoot(for: project, promptIfNeeded: false) { projectRoot in
+        installer.status(projectDirectory: projectRoot)
+      }
+    } catch LinguaAIProjectRootAccessor.Error.projectRootBookmarkInvalid {
+      return Self.emptyStatusReport
     }
   }
 
@@ -46,11 +52,29 @@ struct LinguaAIManager {
       return LinguaAIInstallOption.bestMatch(for: status.projectInstalledTargets)
     }
 
-    return try await withProjectRoot(for: project, promptIfNeeded: false) { projectRoot in
-      LinguaAIInstallOption.bestMatch(
-        for: LinguaAIInstaller.autoDetectTargets(in: projectRoot)
-      )
+    do {
+      return try await withProjectRoot(for: project, promptIfNeeded: false) { projectRoot in
+        LinguaAIInstallOption.bestMatch(
+          for: LinguaAIInstaller.autoDetectTargets(in: projectRoot)
+        )
+      }
+    } catch LinguaAIProjectRootAccessor.Error.projectRootBookmarkInvalid {
+      return .claude
     }
+  }
+
+  private static var emptyStatusReport: LinguaAIStatusReport {
+    func empty(_ target: LinguaAITarget, _ scope: LinguaAIInstallScope) -> LinguaAIScopeStatus {
+      LinguaAIScopeStatus(target: target.label, scope: scope.label, directory: "", installed: [])
+    }
+    return LinguaAIStatusReport(
+      claudeCodeProject: empty(.claudeCode, .project),
+      claudeCodeGlobal: empty(.claudeCode, .global),
+      cursorProject: empty(.cursor, .project),
+      cursorGlobal: empty(.cursor, .global),
+      agentsProject: empty(.agents, .project),
+      agentsGlobal: empty(.agents, .global)
+    )
   }
 
   @MainActor
