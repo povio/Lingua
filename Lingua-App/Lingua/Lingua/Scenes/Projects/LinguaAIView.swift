@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import LinguaLib
 
@@ -26,6 +27,12 @@ struct LinguaAIView: View {
     .frame(maxWidth: .infinity, alignment: .leading)
     .background(Color(nsColor: .windowBackgroundColor))
     .task { await viewModel.refresh() }
+    .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+      // Re-check CLI presence + skill status when the app regains focus
+      // (e.g. after installing the CLI in Terminal). scenePhase doesn't toggle
+      // on plain macOS app switching when our window is still visible.
+      Task { await viewModel.refresh() }
+    }
   }
 
   private var header: some View {
