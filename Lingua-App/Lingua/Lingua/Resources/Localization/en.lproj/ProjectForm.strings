@@ -63,12 +63,12 @@ It serves as base language directory from where the Lingua.swift file will be cr
 "lingua_ai_not_installed" = "Not installed";
 "lingua_ai_partially_installed" = "Partially installed";
 "lingua_ai_installed_status" = "Installed";
-"lingua_ai_no_targets_installed" = "No Lingua AI targets are installed.";
+"lingua_ai_no_targets_installed" = "No Lingua AI targets are installed in this project.";
 "lingua_ai_installed_targets" = "Installed targets: %@";
 "lingua_ai_installed" = "Lingua AI installed for %@.";
 "lingua_ai_uninstalled" = "Lingua AI uninstalled.";
-"lingua_ai_no_installed_targets_error" = "No Lingua AI tools are installed.";
-"lingua_ai_directory_access_error" = "Lingua could not access the selected directory.";
+"lingua_ai_no_installed_targets_error" = "No Lingua AI tools are installed for this project.";
+"lingua_ai_directory_access_error" = "Lingua could not access the selected project directory.";
 "lingua_ai_cli_open_terminal_button" = "Copy & open Terminal";
 "lingua_ai_global_home_access_prompt" = "Grant Lingua write access to your home folder so it can install Lingua AI skills (~/.claude/skills, ~/.cursor/skills, ~/.agents/skills).";
 "lingua_ai_global_home_access_denied" = "Lingua needs permission to write into your home folder to install Lingua AI skills.";
@@ -77,3 +77,5 @@ It serves as base language directory from where the Lingua.swift file will be cr
 "lingua_ai_step_1_title" = "Step 1 — Install the Lingua CLI";
 "lingua_ai_step_2_title" = "Step 2 — Install AI skills";
 "lingua_ai_skills_title" = "Install AI skills";
+"lingua_ai_info_description" = "Install Lingua skills so AI coding agents like Claude Code and Cursor can help you add and update localized strings.";
+"lingua_ai_info_learn_more" = "Learn more";

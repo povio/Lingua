@@ -4,6 +4,9 @@ import LinguaLib
 struct LinguaAIView: View {
   @StateObject private var viewModel = LinguaAIViewModel()
   @State private var isExpanded = false
+  @State private var isShowingInfo = false
+
+  private static let docsURL = URL(string: "https://github.com/povio/Lingua/tree/feature/agentic-localization#using-lingua-with-an-ai-coding-agent")!
 
   var body: some View {
     VStack(alignment: .leading, spacing: 8) {
@@ -26,27 +29,55 @@ struct LinguaAIView: View {
   }
 
   private var header: some View {
-    Button {
-      withAnimation(.easeInOut(duration: 0.2)) { isExpanded.toggle() }
-    } label: {
-      HStack(alignment: .center, spacing: 6) {
-        Image(systemName: "chevron.right")
-          .font(.caption.weight(.semibold))
-          .foregroundStyle(.secondary)
-          .rotationEffect(.degrees(isExpanded ? 90 : 0))
-        Text(Lingua.ProjectForm.linguaAiTitle)
-          .font(.subheadline)
-          .fontWeight(.semibold)
-          .foregroundStyle(.primary)
-          .frame(maxWidth: .infinity, alignment: .leading)
-        Text(viewModel.headerStatusLabel)
-          .font(.caption)
-          .foregroundStyle(viewModel.headerStatusColor)
+    HStack(alignment: .center, spacing: 6) {
+      Button {
+        withAnimation(.easeInOut(duration: 0.2)) { isExpanded.toggle() }
+      } label: {
+        HStack(alignment: .center, spacing: 6) {
+          Image(systemName: "chevron.right")
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(.secondary)
+            .rotationEffect(.degrees(isExpanded ? 90 : 0))
+          Text(Lingua.ProjectForm.linguaAiTitle)
+            .font(.subheadline)
+            .fontWeight(.semibold)
+            .foregroundStyle(.primary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .contentShape(Rectangle())
       }
-      .contentShape(Rectangle())
+      .buttonStyle(.plain)
+      .accessibilityLabel(Lingua.ProjectForm.linguaAiTitle)
+
+      infoButton
+
+      Text(viewModel.headerStatusLabel)
+        .font(.caption)
+        .foregroundStyle(viewModel.headerStatusColor)
+    }
+  }
+
+  private var infoButton: some View {
+    Button {
+      isShowingInfo.toggle()
+    } label: {
+      Image(systemName: "info.circle")
+        .font(.caption)
+        .foregroundStyle(.secondary)
     }
     .buttonStyle(.plain)
-    .accessibilityLabel(Lingua.ProjectForm.linguaAiTitle)
+    .popover(isPresented: $isShowingInfo, arrowEdge: .bottom) {
+      VStack(alignment: .leading, spacing: 8) {
+        Text(Lingua.ProjectForm.linguaAiInfoDescription)
+          .font(.caption)
+          .foregroundStyle(.primary)
+          .fixedSize(horizontal: false, vertical: true)
+        Link(Lingua.ProjectForm.linguaAiInfoLearnMore, destination: Self.docsURL)
+          .font(.caption)
+      }
+      .padding(12)
+      .frame(width: 260, alignment: .leading)
+    }
   }
 
   private var step1InstallCLI: some View {

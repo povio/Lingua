@@ -76,12 +76,16 @@ public enum Lingua {
 		public static let linguaAiCheckingStatus = tr("ProjectForm", "lingua_ai_checking_status")
 		/// Copy & open Terminal
 		public static let linguaAiCliOpenTerminalButton = tr("ProjectForm", "lingua_ai_cli_open_terminal_button")
-		/// Lingua could not access the selected directory.
+		/// Lingua could not access the selected project directory.
 		public static let linguaAiDirectoryAccessError = tr("ProjectForm", "lingua_ai_directory_access_error")
 		/// Lingua needs permission to write into your home folder to install Lingua AI skills.
 		public static let linguaAiGlobalHomeAccessDenied = tr("ProjectForm", "lingua_ai_global_home_access_denied")
 		/// Grant Lingua write access to your home folder so it can install Lingua AI skills (~/.claude/skills, ~/.cursor/skills, ~/.agents/skills).
 		public static let linguaAiGlobalHomeAccessPrompt = tr("ProjectForm", "lingua_ai_global_home_access_prompt")
+		/// Install Lingua skills so AI coding agents like Claude Code and Cursor can help you add and update localized strings.
+		public static let linguaAiInfoDescription = tr("ProjectForm", "lingua_ai_info_description")
+		/// Learn more
+		public static let linguaAiInfoLearnMore = tr("ProjectForm", "lingua_ai_info_learn_more")
 		/// Install Lingua AI
 		public static let linguaAiInstallButton = tr("ProjectForm", "lingua_ai_install_button")
 		/// Lingua AI installed for %@.
@@ -94,9 +98,9 @@ public enum Lingua {
 		public static func linguaAiInstalledTargets(_ param1: String) -> String {
 			return tr("ProjectForm", "lingua_ai_installed_targets", param1)
 		}
-		/// No Lingua AI tools are installed.
+		/// No Lingua AI tools are installed for this project.
 		public static let linguaAiNoInstalledTargetsError = tr("ProjectForm", "lingua_ai_no_installed_targets_error")
-		/// No Lingua AI targets are installed.
+		/// No Lingua AI targets are installed in this project.
 		public static let linguaAiNoTargetsInstalled = tr("ProjectForm", "lingua_ai_no_targets_installed")
 		/// Not installed
 		public static let linguaAiNotInstalled = tr("ProjectForm", "lingua_ai_not_installed")
@@ -114,12 +118,12 @@ public enum Lingua {
 		public static let linguaAiStep2Title = tr("ProjectForm", "lingua_ai_step_2_title")
 		/// Install target
 		public static let linguaAiTargetPicker = tr("ProjectForm", "lingua_ai_target_picker")
+		/// Lingua AI
+		public static let linguaAiTitle = tr("ProjectForm", "lingua_ai_title")
 		/// Uninstall Lingua AI
 		public static let linguaAiUninstallButton = tr("ProjectForm", "lingua_ai_uninstall_button")
 		/// Lingua AI uninstalled.
 		public static let linguaAiUninstalled = tr("ProjectForm", "lingua_ai_uninstalled")
-		/// Lingua AI
-		public static let linguaAiTitle = tr("ProjectForm", "lingua_ai_title")
 		/// Lingua.swift Directory *
 		public static let linguaSwiftOutputDirectory = tr("ProjectForm", "lingua_swift_output_directory")
 		/// This should be the directory where you want to store the generated Lingua.swift file
