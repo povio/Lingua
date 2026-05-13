@@ -7,7 +7,7 @@ struct LinguaAIView: View {
   @State private var isExpanded = false
   @State private var isShowingInfo = false
 
-  private static let docsURL = URL(string: "https://github.com/povio/Lingua/tree/feature/agentic-localization#using-lingua-with-an-ai-coding-agent")!
+  private static let docsURL = URL(string: "https://github.com/povio/Lingua#using-lingua-with-an-ai-coding-agent")!
 
   var body: some View {
     VStack(alignment: .leading, spacing: 8) {
