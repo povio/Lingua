@@ -29,7 +29,10 @@ class ProjectsViewModel: ObservableObject {
   @Published var projectToDelete: Project?
   @Published var localizationResult: Result<String, Error>?
   @Published var selectedProjectId: UUID?
-  
+
+  var isShowingProgressOverlay: Bool { isLocalizing }
+  var progressOverlayText: String { Lingua.Projects.localizing }
+
   private let localizationManager = LocalizationManager(directoryAccessor: DirectoryAccessor())
 }
 
@@ -42,26 +45,26 @@ extension ProjectsViewModel {
     }
     projects.remove(at: index)
   }
-  
+
   func addProject(_ project: Project) {
     projects.append(project)
   }
-  
+
   func updateProject(_ project: Project) {
     guard let index = projects.firstIndex(where: { $0.id == project.id }) else { return }
     projects[index] = project
-    
+
     if selectedProject?.id == project.id {
       updateSelectedProject(project)
     }
   }
-  
+
   func createNewProject() {
     let newProject = Project(id: UUID(), type: .ios, title: Lingua.Projects.newProject)
     projects.append(newProject)
     updateSelectedProject(newProject)
   }
-  
+
   func duplicate(_ project: Project) {
     let newProject = Project(id: UUID(),
                              type: project.type,
@@ -71,12 +74,12 @@ extension ProjectsViewModel {
     projects.append(newProject)
     updateSelectedProject(newProject)
   }
-  
+
   func selectFirstProject() {
     guard let firstProject = filteredProjects.first else { return }
     updateSelectedProject(firstProject)
   }
-  
+
   @MainActor
   func updateSyncDate(for project: Project) {
     if let index = projects.firstIndex(where: { $0.id == project.id }) {
@@ -86,14 +89,14 @@ extension ProjectsViewModel {
       }
     }
   }
-  
+
   @MainActor
   func localizeProject(_ project: Project) async {
     withAnimation {
       isLocalizing = true
       localizationResult = nil
     }
-    
+
     do {
       let message = try await localizationManager.localize(project: project)
       updateSyncDate(for: project)
@@ -101,7 +104,7 @@ extension ProjectsViewModel {
     } catch {
       localizationResult = .failure(error)
     }
-    
+
     withAnimation {
       isLocalizing = false
     }
@@ -116,8 +119,6 @@ extension ProjectsViewModel {
 // MARK: - Private methods
 private extension ProjectsViewModel {
   func updateSelectedProject(_ project: Project) {
-    withAnimation(.easeIn(duration: 0.5)) {
-      self.selectedProjectId = project.id
-    }
+    selectedProjectId = project.id
   }
 }

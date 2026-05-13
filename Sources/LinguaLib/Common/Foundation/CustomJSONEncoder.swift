@@ -3,7 +3,7 @@ import Foundation
 final class CustomJSONEncoder: JSONEncoder, @unchecked Sendable {
   override func encode<T: Encodable>(_ value: T) throws -> Data {
     let encoder = JSONEncoder()
-    encoder.outputFormatting = .prettyPrinted
+    encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
     let originalData = try encoder.encode(value)
     
     guard let originalString = String(data: originalData, encoding: .utf8) else {

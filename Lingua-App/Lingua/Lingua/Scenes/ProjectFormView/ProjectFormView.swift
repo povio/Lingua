@@ -5,13 +5,14 @@
 //  Created by Egzon Arifi on 21/08/2023.
 //
 
+import AppKit
 import SwiftUI
 import LinguaLib
 
 struct ProjectFormView: View {
   @ObservedObject var viewModel: ProjectFormViewModel
   @Binding var isLocalizing: Bool
-  
+
   @State private var apiKeyValid = false
   @State private var sheetIdValid = false
   @State private var titleValid = true
@@ -33,12 +34,14 @@ struct ProjectFormView: View {
         iOSInfoFormSection()
       }
       .toolbar {
-        ToolbarItem(placement: .cancellationAction) {
-          VStack(alignment: .leading) {
-            Text(viewModel.project.title)
-              .font(.headline)
-            Text(viewModel.project.lastLocalizedAt.map { Lingua.ProjectForm.lastLocalizedSubtitle($0.formatted) } ?? "")
-              .font(.subheadline)
+        if #available(macOS 26.0, *) {
+          ToolbarItem(placement: .navigation) {
+            projectHeaderToolbarContent
+          }
+          .sharedBackgroundVisibility(.hidden)
+        } else {
+          ToolbarItem(placement: .navigation) {
+            projectHeaderToolbarContent
           }
         }
         ToolbarItem(placement: .primaryAction) {
@@ -49,8 +52,8 @@ struct ProjectFormView: View {
         onSave?(newValue)
       }
       .formStyle(.grouped)
-      
-      deleteButton(for: viewModel.project).padding()
+
+      bottomActionBar(for: viewModel.project).padding()
     }
     .padding()
     .overlay {
@@ -70,6 +73,21 @@ struct ProjectFormView: View {
 
 // MARK: - Private View Builders
 private extension ProjectFormView {
+  @ViewBuilder
+  var projectHeaderToolbarContent: some View {
+    VStack(alignment: .leading, spacing: 2) {
+      Text(viewModel.project.title)
+        .font(.headline)
+        .lineLimit(1)
+        .truncationMode(.tail)
+      Text(viewModel.project.lastLocalizedAt.map { Lingua.ProjectForm.lastLocalizedSubtitle($0.formatted) } ?? "")
+        .font(.subheadline)
+        .lineLimit(1)
+        .truncationMode(.tail)
+    }
+    .frame(maxWidth: 320, alignment: .leading)
+  }
+
   @ViewBuilder
   func basicConfigurationFormSection() -> some View {
     Section(header: Text(Lingua.ProjectForm.configurationSection).font(.headline)) {
@@ -192,7 +210,7 @@ private extension ProjectFormView {
       }
     }
   }
-  
+
   @ViewBuilder
   func iOSInfoFormSection() -> some View {
     if viewModel.project.type == .ios {
@@ -214,7 +232,24 @@ private extension ProjectFormView {
         .foregroundColor(.red)
     })
   }
-  
+
+  @ViewBuilder
+  func bottomActionBar(for project: Project) -> some View {
+    HStack(alignment: .center) {
+      deleteButton(for: project)
+      Spacer(minLength: 16)
+      Button {
+        openOutputDirectoryInFinder(for: project)
+      } label: {
+        HStack {
+          Image(systemName: "folder")
+          Text(Lingua.ProjectForm.openInFinder)
+        }
+      }
+      .disabled(!canOpenOutputDirectoryInFinder(project))
+    }
+  }
+
   @ViewBuilder
   func localizeButton() -> some View {
     Button(action: {
@@ -268,5 +303,34 @@ private extension ProjectFormView {
         self.copied = false
       }
     }
+  }
+
+  func canOpenOutputDirectoryInFinder(_ project: Project) -> Bool {
+    let path = project.directoryPath
+    guard !path.isEmpty, let url = resolvedOutputDirectoryURL(from: path) else { return false }
+    var isDirectory: ObjCBool = false
+    guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory) else { return false }
+    return isDirectory.boolValue
+  }
+
+  func openOutputDirectoryInFinder(for project: Project) {
+    guard canOpenOutputDirectoryInFinder(project) else { return }
+    do {
+      try DirectoryAccessor().withAccessToDirectory(
+        fromBookmarkKey: project.bookmarkDataForDirectoryPath,
+        path: project.directoryPath
+      ) { url in
+        NSWorkspace.shared.activateFileViewerSelecting([url])
+      }
+    } catch {
+      debugPrint("ProjectFormView.openOutputDirectoryInFinder: \(error.localizedDescription)")
+    }
+  }
+
+  func resolvedOutputDirectoryURL(from path: String) -> URL? {
+    if let url = URL(string: path), url.isFileURL {
+      return url
+    }
+    return URL(fileURLWithPath: path)
   }
 }

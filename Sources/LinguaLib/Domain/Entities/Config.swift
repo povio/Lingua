@@ -6,31 +6,37 @@ public struct Config: Equatable {
 
 public extension Config {
   struct Localization: Equatable {
-    let apiKey: String
-    let sheetId: String
-    let outputDirectory: String
-    let localizedSwiftCode: LocalizedSwiftCode?
-    let allowedSections: [String]?
-    
+    public let apiKey: String
+    public let sheetId: String
+    public let outputDirectory: String
+    public let localizedSwiftCode: LocalizedSwiftCode?
+    public let allowedSections: [String]?
+    public let serviceAccountKeyPath: String?
+    public let defaultWriteSheet: String?
+
     public init(
       apiKey: String,
       sheetId: String,
       outputDirectory: String,
       localizedSwiftCode: LocalizedSwiftCode?,
-      allowedSections: [String]? = nil
+      allowedSections: [String]? = nil,
+      serviceAccountKeyPath: String? = nil,
+      defaultWriteSheet: String? = nil
     ) {
       self.apiKey = apiKey
       self.sheetId = sheetId
       self.outputDirectory = outputDirectory
       self.localizedSwiftCode = localizedSwiftCode
       self.allowedSections = allowedSections
+      self.serviceAccountKeyPath = serviceAccountKeyPath
+      self.defaultWriteSheet = defaultWriteSheet
     }
   }
-  
+
   struct LocalizedSwiftCode: Equatable {
-    let stringsDirectory: String
-    let outputSwiftCodeFileDirectory: String
-    
+    public let stringsDirectory: String
+    public let outputSwiftCodeFileDirectory: String
+
     public init(stringsDirectory: String, outputSwiftCodeFileDirectory: String) {
       self.stringsDirectory = stringsDirectory
       self.outputSwiftCodeFileDirectory = outputSwiftCodeFileDirectory

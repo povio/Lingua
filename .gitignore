@@ -8,3 +8,8 @@ DerivedData/
 .swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
 .netrc
 *.env
+
+# Google service account keys — NEVER commit
+*-sa.json
+lingua-sa.json
+service-account*.json

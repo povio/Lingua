@@ -87,7 +87,7 @@ extension Project {
   var bookmarkDataForStringsDirectory: String {
     "\(id.uuidString)stringsDirectory"
   }
-  
+
   var icon: Image {
     switch type {
     case .ios:

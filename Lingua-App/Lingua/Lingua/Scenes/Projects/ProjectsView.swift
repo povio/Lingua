@@ -9,20 +9,19 @@ import SwiftUI
 
 struct ProjectsView: View {
   @EnvironmentObject private var viewModel: ProjectsViewModel
-  @State private var columnVisibility = NavigationSplitViewVisibility.automatic
 
   var body: some View {
-    NavigationSplitView(columnVisibility: $columnVisibility) {
-      VStack {
-        HStack {
-          Image(systemName: "folder")
-          Text("Projects")
-        }
-        Spacer()
+    NavigationSplitView {
+      VStack(spacing: 0) {
+        ProjectListView()
+          .environmentObject(viewModel)
+          .layoutPriority(0)
+          .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
+        Divider()
+        LinguaAIView()
+          .layoutPriority(1)
       }
-    } content: {
-      ProjectListView()
-        .environmentObject(viewModel)
+      .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
     } detail: {
       if let project = viewModel.selectedProject {
         projectFormView(for: project)
@@ -37,14 +36,14 @@ struct ProjectsView: View {
       }
     }
     .scrollContentBackground(.hidden)
+    .navigationTitle("")
     .onAppear {
       viewModel.selectFirstProject()
-      columnVisibility = .doubleColumn
     }
     .alert(isPresented: $viewModel.showDeleteAlert) { deletionAlert() }
     .overlay(ProgressOverlay(
-      isProgressing: $viewModel.isLocalizing,
-      text: Lingua.Projects.localizing
+      isProgressing: viewModel.isShowingProgressOverlay,
+      text: viewModel.progressOverlayText
     ))
     .overlay(hudResultOverlay())
   }
@@ -68,7 +67,7 @@ private extension ProjectsView {
     )
     .navigationSplitViewColumnWidth(min: 400, ideal: 600)
   }
-  
+
   @ViewBuilder
   func hudResultOverlay() -> some View {
     switch viewModel.localizationResult {
@@ -84,7 +83,7 @@ private extension ProjectsView {
       EmptyView()
     }
   }
-  
+
   func deletionAlert() -> Alert {
     Alert(
       title: Text(Lingua.Projects.deleteAlertTitle),

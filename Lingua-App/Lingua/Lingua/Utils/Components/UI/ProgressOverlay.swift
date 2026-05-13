@@ -8,9 +8,9 @@
 import SwiftUI
 
 struct ProgressOverlay: View {
-  @Binding var isProgressing: Bool
+  var isProgressing: Bool
   var text: String
-  
+
   var body: some View {
     if isProgressing {
       ZStack {

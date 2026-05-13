@@ -1,11 +1,16 @@
 import Foundation
 
 public struct LocalizationSheet: Equatable {
-  let language: String
-  let entries: [LocalizationEntry]
+  public let language: String
+  public let entries: [LocalizationEntry]
+
+  public init(language: String, entries: [LocalizationEntry]) {
+    self.language = language
+    self.entries = entries
+  }
 }
 
-extension LocalizationSheet {
+public extension LocalizationSheet {
   var languageCode: String {
     String(language.prefix(2))
   }

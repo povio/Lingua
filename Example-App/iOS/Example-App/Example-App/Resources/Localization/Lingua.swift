@@ -4,12 +4,12 @@
 
 import Foundation
 
-enum Lingua {
-	enum General {
+public enum Lingua {
+	public enum General {
 		/// Save
-		static let save = tr("General", "save")
+		public static let save = tr("General", "save")
 		/// Success
-		static let success = tr("General", "success")
+		public static let success = tr("General", "success")
 	}
     
 	private static func tr(_ table: String, _ key: String, _ args: CVarArg...) -> String {

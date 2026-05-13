@@ -72,6 +72,58 @@ public enum Lingua {
 		public static func lastLocalizedSubtitle(_ param1: String) -> String {
 			return tr("ProjectForm", "last_localized_subtitle", param1)
 		}
+		/// Checking...
+		public static let linguaAiCheckingStatus = tr("ProjectForm", "lingua_ai_checking_status")
+		/// Copy & open Terminal
+		public static let linguaAiCliOpenTerminalButton = tr("ProjectForm", "lingua_ai_cli_open_terminal_button")
+		/// Lingua could not access the selected project directory.
+		public static let linguaAiDirectoryAccessError = tr("ProjectForm", "lingua_ai_directory_access_error")
+		/// Lingua needs permission to write into your home folder to install Lingua AI skills.
+		public static let linguaAiGlobalHomeAccessDenied = tr("ProjectForm", "lingua_ai_global_home_access_denied")
+		/// Grant Lingua write access to your home folder so it can install Lingua AI skills (~/.claude/skills, ~/.cursor/skills, ~/.agents/skills).
+		public static let linguaAiGlobalHomeAccessPrompt = tr("ProjectForm", "lingua_ai_global_home_access_prompt")
+		/// Install Lingua skills so AI coding agents like Claude Code and Cursor can help you add and update localized strings.
+		public static let linguaAiInfoDescription = tr("ProjectForm", "lingua_ai_info_description")
+		/// Learn more
+		public static let linguaAiInfoLearnMore = tr("ProjectForm", "lingua_ai_info_learn_more")
+		/// Install Lingua AI
+		public static let linguaAiInstallButton = tr("ProjectForm", "lingua_ai_install_button")
+		/// Lingua AI installed for %@.
+		public static func linguaAiInstalled(_ param1: String) -> String {
+			return tr("ProjectForm", "lingua_ai_installed", param1)
+		}
+		/// Installed
+		public static let linguaAiInstalledStatus = tr("ProjectForm", "lingua_ai_installed_status")
+		/// Installed targets: %@
+		public static func linguaAiInstalledTargets(_ param1: String) -> String {
+			return tr("ProjectForm", "lingua_ai_installed_targets", param1)
+		}
+		/// No Lingua AI tools are installed for this project.
+		public static let linguaAiNoInstalledTargetsError = tr("ProjectForm", "lingua_ai_no_installed_targets_error")
+		/// No Lingua AI targets are installed in this project.
+		public static let linguaAiNoTargetsInstalled = tr("ProjectForm", "lingua_ai_no_targets_installed")
+		/// Not installed
+		public static let linguaAiNotInstalled = tr("ProjectForm", "lingua_ai_not_installed")
+		/// Partially installed
+		public static let linguaAiPartiallyInstalled = tr("ProjectForm", "lingua_ai_partially_installed")
+		/// Setup required
+		public static let linguaAiSetupRequired = tr("ProjectForm", "lingua_ai_setup_required")
+		/// Install AI skills
+		public static let linguaAiSkillsTitle = tr("ProjectForm", "lingua_ai_skills_title")
+		/// Unavailable
+		public static let linguaAiStatusUnavailable = tr("ProjectForm", "lingua_ai_status_unavailable")
+		/// Step 1 — Install the Lingua CLI
+		public static let linguaAiStep1Title = tr("ProjectForm", "lingua_ai_step_1_title")
+		/// Step 2 — Install AI skills
+		public static let linguaAiStep2Title = tr("ProjectForm", "lingua_ai_step_2_title")
+		/// Install target
+		public static let linguaAiTargetPicker = tr("ProjectForm", "lingua_ai_target_picker")
+		/// Lingua AI
+		public static let linguaAiTitle = tr("ProjectForm", "lingua_ai_title")
+		/// Uninstall Lingua AI
+		public static let linguaAiUninstallButton = tr("ProjectForm", "lingua_ai_uninstall_button")
+		/// Lingua AI uninstalled.
+		public static let linguaAiUninstalled = tr("ProjectForm", "lingua_ai_uninstalled")
 		/// Lingua.swift Directory *
 		public static let linguaSwiftOutputDirectory = tr("ProjectForm", "lingua_swift_output_directory")
 		/// This should be the directory where you want to store the generated Lingua.swift file
@@ -80,6 +132,8 @@ public enum Lingua {
 		public static let localizeButton = tr("ProjectForm", "localize_button")
 		/// The .lproj directory should be the directory where .strings files are saved.\nIt serves as base language directory from where the Lingua.swift file will be created
 		public static let lprojDirectoryHelp = tr("ProjectForm", "lproj_directory_help")
+		/// Show in Finder
+		public static let openInFinder = tr("ProjectForm", "open_in_finder")
 		/// The output directory property should be the path where you want the tool to create localization files.\n\n* For iOS it can be any directory on your project. After you run the command, for the first time, \n   you have to Add files to 'YourProject' in Xcode.\n\n* For Android, since the translation are placed in a specific project directory,\n   the output directory it should look something like this: path/YourProject/app/src/main/res 
 		public static let outputDirectoryHelp = tr("ProjectForm", "output_directory_help")
 		/// Platform *

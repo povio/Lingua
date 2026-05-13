@@ -17,7 +17,9 @@ public struct ConfigDtoTransformer: Transformable {
       localizationDto = Config.Localization(apiKey: localization.apiKey,
                                                     sheetId: localization.sheetId,
                                                     outputDirectory: localization.outputDirectory,
-                                                    localizedSwiftCode: localizedSwiftCode)
+                                                    localizedSwiftCode: localizedSwiftCode,
+                                                    serviceAccountKeyPath: localization.serviceAccountKeyPath,
+                                                    defaultWriteSheet: localization.defaultWriteSheet)
     }
     
     return Config(localization: localizationDto)

@@ -93,6 +93,7 @@ You can download the macOS app from [App Store](https://apps.apple.com/us/app/li
 
 - **Settings Configuration:** Easily configure and manage your settings through the app's settings panel.
 - **Translation Initiation:** Initiate the translation process with a single click without the need for terminal commands.
+- **AI Agent Skills:** Install Lingua's bundled Agent Skills for Claude Code, Cursor, or `.agents/` directly into your project's root from the **Lingua AI** section of the project form — no terminal required.
 
 ### 2. macOS Terminal App
 
@@ -191,3 +192,22 @@ $ lingua android /path/to/lingua_config.json
 **Best Usage Practices**
 
 To ensure you're leveraging the tool optimally, both locally and in the context of CICD, we recommend you delve into our [Best Usage Practices guide](./Resources/Docs/App/BEST_USAGE_PRACTICES.md).
+
+## Using Lingua with an AI coding agent
+
+Lingua ships with bundled [Agent Skills](https://agentskills.io/) for [Claude Code](https://docs.claude.com/claude-code), [Cursor](https://cursor.com/docs/skills) (2.4+), and a generic `.agents/skills/` layout, so an AI agent can drive the whole localization loop end-to-end — discover existing keys, add new translations directly to your Google Sheet, regenerate platform files, and reference the new key in your Swift / Kotlin code.
+
+```shell
+$ cd MyAwesomeApp
+$ lingua ai install        # auto-detects from the repo root resolved from cwd
+$ git add .claude .cursor .agents  # commit whichever was written
+```
+
+`lingua ai install` walks up from the current directory to find the project root by looking for `.git`, `.claude`, `.cursor`, or `.agents`, then auto-detects which integration(s) to install there. Use `--target claude|cursor|agents|both` to choose explicitly (`both` = Claude + Cursor only; prefer `--target agents` when a shared `.agents/skills/` tree is enough), and `--global` to install under `~/.claude/skills/`, `~/.cursor/skills/`, or `~/.agents/skills/` instead.
+
+Once installed, you can talk to your agent naturally — *"add an empty-state string for the favorites screen: 'No favorites yet'"* — and it will run `lingua find`, `lingua sections`, `lingua add`, `lingua sync`, and edit your view to use the new key.
+
+Prefer a GUI? The macOS Lingua app exposes the same installer under the **Lingua AI** section of the project form — pick a target, click Install, and grant the one-time folder-access prompt; see [AI agent usage guide](./Resources/Docs/App/AI_AGENT_USAGE.md) for details.
+
+The new agent-facing subcommands (`lingua sections`, `lingua list`, `lingua find`, `lingua add`, `lingua update`, `lingua sync`, `lingua doctor`) all emit a stable JSON envelope and are fully scriptable, so you can also wire them into other AI frameworks or CI jobs. See [AI agent integration plan](./Resources/Docs/App/AI_AGENT_INTEGRATION.md) and [AI agent usage guide](./Resources/Docs/App/AI_AGENT_USAGE.md) for details, including how to set up a Google service account for write access.
+
