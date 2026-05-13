@@ -11,7 +11,9 @@ public struct LocalizationSheet: Equatable {
 }
 
 public extension LocalizationSheet {
+  /// Returns the locale prefix (e.g. `zh-Hant`, `pt-BR`, `en`) by trimming legacy `_<region>_<descriptor>` suffixes used in sheet headers.
   var languageCode: String {
-    String(language.prefix(2))
+    guard let separatorIndex = language.firstIndex(of: "_") else { return language }
+    return String(language[..<separatorIndex])
   }
 }
