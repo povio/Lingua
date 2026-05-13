@@ -13,8 +13,13 @@ public enum Lingua {
 	}
     
 	private static func tr(_ table: String, _ key: String, _ args: CVarArg...) -> String {
-		let format = BundleToken.bundle.localizedString(forKey: key, value: nil, table: table)
+		let format = normalizedPrintfFormat(BundleToken.bundle.localizedString(forKey: key, value: nil, table: table))
 		return String(format: format, locale: Locale.current, arguments: args)
+	}
+
+	/// Maps full-width `％@` (U+FF05 + `@`) to ASCII `%@` so `String(format:)` substitutes arguments in zh-Hant copy.
+	private static func normalizedPrintfFormat(_ format: String) -> String {
+		format.replacingOccurrences(of: "\u{FF05}@", with: "%@")
 	}
 }
 

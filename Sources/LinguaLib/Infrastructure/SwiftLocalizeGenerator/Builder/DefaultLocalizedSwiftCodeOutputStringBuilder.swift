@@ -20,8 +20,13 @@ struct DefaultLocalizedSwiftCodeOutputStringBuilder: LocalizedSwiftCodeOutputStr
            \(sectionsOutput)
                
            \tprivate static func tr(_ table: String, _ key: String, _ args: CVarArg...) -> String {
-           \t\tlet format = BundleToken.bundle.localizedString(forKey: key, value: nil, table: table)
+           \t\tlet format = normalizedPrintfFormat(BundleToken.bundle.localizedString(forKey: key, value: nil, table: table))
            \t\treturn String(format: format, locale: Locale.current, arguments: args)
+           \t}
+
+           \t/// Maps full-width `％@` (U+FF05 + `@`) to ASCII `%@` so `String(format:)` substitutes arguments in zh-Hant copy.
+           \tprivate static func normalizedPrintfFormat(_ format: String) -> String {
+           \t\tformat.replacingOccurrences(of: "\\u{FF05}@", with: "%@")
            \t}
            }
            
