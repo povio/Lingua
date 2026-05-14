@@ -52,6 +52,41 @@ final class SheetTranslationBuilderTests: XCTestCase {
     
     XCTAssertEqual(translations, expectedTranslations)
   }
+
+  func test_buildTranslations_normalizesFullWidthPrintfPlaceholders() {
+    let sut = makeSUT()
+    let row = ["section", "key", "", "下午，\u{FF05}@！"]
+    let expectedTranslations = ["one": "下午，%@！"]
+
+    let translations = sut.buildTranslations(from: row)
+
+    XCTAssertEqual(translations, expectedTranslations)
+  }
+
+  func test_buildTranslations_normalizesAllPluralForms() {
+    let sut = makeSUT()
+    let row = [
+      "section", "key",
+      "\u{FF05}d 张",
+      "\u{FF05}d 张",
+      "\u{FF05}d 张",
+      "\u{FF05}d 张",
+      "\u{FF05}d 张",
+      "\u{FF05}d 张"
+    ]
+    let expectedTranslations: [String: String] = [
+      "zero": "%d 张",
+      "one": "%d 张",
+      "two": "%d 张",
+      "few": "%d 张",
+      "many": "%d 张",
+      "other": "%d 张"
+    ]
+
+    let translations = sut.buildTranslations(from: row)
+
+    XCTAssertEqual(translations, expectedTranslations)
+  }
 }
 
 extension SheetTranslationBuilderTests {

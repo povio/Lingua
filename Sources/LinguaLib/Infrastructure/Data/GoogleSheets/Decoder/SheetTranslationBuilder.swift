@@ -12,7 +12,9 @@ struct SheetTranslationBuilder: TranslationBuilder {
     let pluralCategories: [String] = PluralCategory.allCases.map { $0.rawValue }
     let values: [String] = Array(row.dropFirst(numberOfMetadataColumns).prefix(numberOfTranslationColumns))
     
-    let nonEmptyPairs = zip(pluralCategories, values).filter { !$1.isEmpty }
+    let nonEmptyPairs = zip(pluralCategories, values)
+      .filter { !$1.isEmpty }
+      .map { ($0, PrintfNormalizer.normalize($1)) }
     return Dictionary(uniqueKeysWithValues: nonEmptyPairs)
   }
 }
