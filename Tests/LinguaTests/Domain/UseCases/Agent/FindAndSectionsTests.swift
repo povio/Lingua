@@ -48,4 +48,38 @@ final class FindAndSectionsTests: XCTestCase {
     // Either an exact value match (Hello → score 90) or key contains "hello" (80) wins.
     XCTAssertEqual(result.matches.first?.englishValue?.lowercased(), "hello")
   }
+
+  func test_findTranslation_multipleQueries_shareOneLoad_returningPerQueryResults() async throws {
+    let loader = CountingMockLoader(sheets: [
+      LocalizationSheet(language: "en_US_English", entries: [
+        LocalizationEntry(section: "settings", key: "title", translations: ["other": "Settings"]),
+        LocalizationEntry(section: "settings", key: "account", translations: ["other": "Account"]),
+        LocalizationEntry(section: "settings", key: "display_name", translations: ["other": "Display name"])
+      ])
+    ])
+    let sut = FindTranslationUseCase(sheetDataLoader: loader, preferredSheet: nil)
+
+    let result = try await sut.find(queries: ["Settings", "Account", "Display name"], limit: 5)
+
+    XCTAssertEqual(result.results.count, 3)
+    XCTAssertEqual(result.results[0].query, "Settings")
+    XCTAssertEqual(result.results[1].query, "Account")
+    XCTAssertEqual(result.results[2].query, "Display name")
+    // The sheet was loaded exactly once — the whole point of the multi-query path.
+    XCTAssertEqual(loader.loadCount, 1)
+  }
+}
+
+/// Loader that records how many times any loading method was called. Used to verify the
+/// multi-query / canonical-only paths share a single round trip across queries.
+private final class CountingMockLoader: SheetDataLoader {
+  private let sheets: [LocalizationSheet]
+  private(set) var loadCount = 0
+
+  init(sheets: [LocalizationSheet]) { self.sheets = sheets }
+
+  func loadSheets() async throws -> [LocalizationSheet] {
+    loadCount += 1
+    return sheets
+  }
 }

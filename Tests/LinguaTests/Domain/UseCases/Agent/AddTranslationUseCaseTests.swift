@@ -431,6 +431,7 @@ private final class SpyWriter: GoogleSheetsWriting {
   var appends: [Append] = []
   var cellUpdates: [(tab: String, row: Int, col: Int, value: String)] = []
   var deletes: [(tab: String, row: Int)] = []
+  var batchEdits: [SheetBatchEdit] = []
 
   func insertRow(sheetTab: String, oneBasedRowIndex: Int, cells: [String]) async throws {
     inserts.append(.init(tab: sheetTab, row: oneBasedRowIndex, cells: cells))
@@ -446,5 +447,8 @@ private final class SpyWriter: GoogleSheetsWriting {
   }
   func deleteRow(sheetTab: String, oneBasedRowIndex: Int) async throws {
     deletes.append((sheetTab, oneBasedRowIndex))
+  }
+  func applyBatchEdits(_ edits: [SheetBatchEdit]) async throws {
+    batchEdits.append(contentsOf: edits)
   }
 }

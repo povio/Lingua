@@ -14,14 +14,13 @@ public struct ListSectionsUseCase: ListingSections {
   }
 
   public func listSections() async throws -> ListSectionsResult {
-    let sheets = try await sheetDataLoader.loadSheets()
-    guard let canonical = CanonicalSheetSelector.pick(from: sheets, preferred: preferredSheet) else {
-      throw AgentError(code: "no_sheets", message: "No language sheets found in the spreadsheet.")
-    }
+    let load = try await sheetDataLoader.loadCanonicalSheet(preferred: preferredSheet)
     return ListSectionsResult(
-      canonicalSheet: canonical.language,
-      languages: sheets.map { LanguageInfo(code: $0.languageCode, tabName: $0.language) },
-      sections: Self.summarize(entries: canonical.entries)
+      canonicalSheet: load.canonical.language,
+      languages: load.allLanguageTabNames.map {
+        LanguageInfo(code: CanonicalSheetSelector.languageCode(forTabName: $0), tabName: $0)
+      },
+      sections: Self.summarize(entries: load.canonical.entries)
     )
   }
 
