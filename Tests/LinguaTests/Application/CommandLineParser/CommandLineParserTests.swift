@@ -79,6 +79,72 @@ final class CommandLineParserTests: XCTestCase {
     XCTAssertEqual(parsed.flags["limit"], "5")
   }
 
+  func test_parse_findCommand_collectsMultiplePositionalQueries() throws {
+    let parsed = try sut.parse(arguments: [
+      "Lingua", "find", "config.json",
+      "Settings", "Account", "Display name"
+    ])
+    XCTAssertEqual(parsed.command, .find)
+    XCTAssertEqual(parsed.positional, ["Settings", "Account", "Display name"])
+  }
+
+  func test_parse_subcommand_helpBeforeConfig_returnsHelpFlagInsteadOfPathError() throws {
+    // Per-subcommand --help shouldn't insist on a config path. Regression for the
+    // "Invalid config file path. Must end with '.json'." wart that ate agent turns.
+    for form in ["--help", "-h", "help"] {
+      let parsed = try sut.parse(arguments: ["Lingua", "add", form])
+      XCTAssertEqual(parsed.command, .add)
+      XCTAssertTrue(parsed.booleanFlags.contains("help"), "form: \(form)")
+    }
+  }
+
+  func test_parse_subcommand_helpAfterConfig_setsHelpFlag() throws {
+    // `lingua add ./config.json --help` also short-circuits — the dispatcher checks the
+    // help flag before requiring --section / --key.
+    let parsed = try sut.parse(arguments: ["Lingua", "add", "./config.json", "--help"])
+    XCTAssertEqual(parsed.command, .add)
+    XCTAssertEqual(parsed.configFilePath, "./config.json")
+    XCTAssertTrue(parsed.booleanFlags.contains("help"))
+  }
+
+  func test_parse_aiHelp_acceptsHelpInsteadOfSubcommand() throws {
+    for form in ["--help", "-h", "help"] {
+      let parsed = try sut.parse(arguments: ["Lingua", "ai", form])
+      XCTAssertEqual(parsed.command, .ai)
+      XCTAssertTrue(parsed.booleanFlags.contains("help"), "form: \(form)")
+    }
+  }
+
+  func test_parse_booleanFlagsDoNotSwallowFollowingToken() throws {
+    // Regression: `lingua add ./config.json --batch /tmp/x.json --new-section Settings` used
+    // to silently set flags["new-section"] = "Settings" and leave booleanFlags empty, so
+    // the use case never knew to allow a new section. With the boolean-flag whitelist the
+    // trailing `Settings` falls through as a stray positional arg and `new-section` stays
+    // a true boolean.
+    let parsed = try sut.parse(arguments: [
+      "Lingua", "add", "config.json",
+      "--batch", "/tmp/x.json",
+      "--new-section", "Settings"
+    ])
+    XCTAssertEqual(parsed.flags["batch"], "/tmp/x.json")
+    XCTAssertTrue(parsed.booleanFlags.contains("new-section"))
+    XCTAssertNil(parsed.flags["new-section"])
+    XCTAssertEqual(parsed.positional, ["Settings"])
+  }
+
+  func test_parse_addCommand_acceptsBatchAndSyncFlags() throws {
+    let parsed = try sut.parse(arguments: [
+      "Lingua", "add", "config.json",
+      "--batch", "/tmp/payload.json",
+      "--new-section",
+      "--sync", "ios,android"
+    ])
+    XCTAssertEqual(parsed.command, .add)
+    XCTAssertEqual(parsed.flags["batch"], "/tmp/payload.json")
+    XCTAssertEqual(parsed.flags["sync"], "ios,android")
+    XCTAssertTrue(parsed.booleanFlags.contains("new-section"))
+  }
+
   func test_parse_addCommand_collectsMultiValueFlags() throws {
     let parsed = try sut.parse(arguments: [
       "Lingua", "add", "config.json",

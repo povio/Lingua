@@ -233,6 +233,97 @@ final class GoogleSheetsWriterTests: XCTestCase {
     XCTAssertEqual(metadataCalls.count, 1)
   }
 
+  // MARK: - applyBatchEdits
+
+  func test_applyBatchEdits_emitsSingleBatchUpdate_withWriteOnlyBeforeInsertsDescending() async throws {
+    let recorder = RequestRecorder()
+    HandlerURLProtocol.setHandler { request in
+      recorder.record(request)
+      let url = request.url!.absoluteString
+      if url.contains("?fields=sheets.properties") {
+        let payload = """
+        {"sheets":[{"properties":{"sheetId":100,"title":"en"}},{"properties":{"sheetId":200,"title":"de"}}]}
+        """
+        return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, Data(payload.utf8))
+      }
+      return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, Data("{}".utf8))
+    }
+
+    let sut = makeSUT()
+    try await sut.applyBatchEdits([
+      SheetBatchEdit(sheetTab: "en", startRow: 30, rows: [["x", "y"]], mode: .insertRows),
+      SheetBatchEdit(sheetTab: "en", startRow: 60, rows: [["a", "b"]], mode: .writeOnly),
+      SheetBatchEdit(sheetTab: "en", startRow: 80, rows: [["p", "q"]], mode: .insertRows),
+      SheetBatchEdit(sheetTab: "de", startRow: 30, rows: [["xd", "yd"]], mode: .insertRows)
+    ])
+
+    // First request(s) are the metadata fetch; everything else is a single batchUpdate.
+    let batchRequests = recorder.requests.filter { ($0.httpMethod ?? "GET") == "POST" }
+    XCTAssertEqual(batchRequests.count, 1, "all edits should fit in one HTTP round trip")
+
+    let body = try XCTUnwrap(recorder.bodies.last)
+    let json = try XCTUnwrap(try JSONSerialization.jsonObject(with: body) as? [String: Any])
+    let requests = try XCTUnwrap(json["requests"] as? [[String: Any]])
+
+    // Expected ordering of inner requests:
+    //   - writeOnly (60) → updateCells
+    //   - insert (80)    → insertDimension + updateCells
+    //   - insert (30 en) → insertDimension + updateCells     (between the two row-30 inserts,
+    //   - insert (30 de) → insertDimension + updateCells       order within the same row is stable)
+    // Total = 1 + 2 + 2 + 2 = 7 inner requests.
+    XCTAssertEqual(requests.count, 7)
+
+    XCTAssertNotNil(requests[0]["updateCells"], "writeOnly comes first")
+    XCTAssertNotNil(requests[1]["insertDimension"], "highest row insert runs before lower rows")
+    XCTAssertNotNil(requests[2]["updateCells"])
+    XCTAssertNotNil(requests[3]["insertDimension"], "row-30 inserts come last")
+    XCTAssertNotNil(requests[4]["updateCells"])
+
+    // Column index for an insert is 0 (we always insert from column A).
+    let firstWriteStart = try XCTUnwrap((requests[0]["updateCells"] as? [String: Any])?["start"] as? [String: Any])
+    XCTAssertEqual(firstWriteStart["rowIndex"] as? Int, 59) // 0-indexed
+    XCTAssertEqual(firstWriteStart["columnIndex"] as? Int, 0)
+  }
+
+  func test_applyBatchEdits_emptyEdits_doesNothing() async throws {
+    let recorder = RequestRecorder()
+    HandlerURLProtocol.setHandler { request in
+      recorder.record(request)
+      return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, Data("{}".utf8))
+    }
+    let sut = makeSUT()
+    try await sut.applyBatchEdits([])
+    XCTAssertTrue(recorder.requests.isEmpty)
+  }
+
+  func test_applyBatchEdits_writeOnlyAtColumnD_targetsCorrectCell() async throws {
+    let recorder = RequestRecorder()
+    HandlerURLProtocol.setHandler { request in
+      recorder.record(request)
+      let url = request.url!.absoluteString
+      if url.contains("?fields=sheets.properties") {
+        let payload = """
+        {"sheets":[{"properties":{"sheetId":5,"title":"Tab"}}]}
+        """
+        return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, Data(payload.utf8))
+      }
+      return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, Data("{}".utf8))
+    }
+
+    let sut = makeSUT()
+    try await sut.applyBatchEdits([
+      SheetBatchEdit(sheetTab: "Tab", startRow: 7, startColumn: 4, rows: [["new value"]], mode: .writeOnly)
+    ])
+
+    let body = try XCTUnwrap(recorder.bodies.last)
+    let json = try XCTUnwrap(try JSONSerialization.jsonObject(with: body) as? [String: Any])
+    let requests = try XCTUnwrap(json["requests"] as? [[String: Any]])
+    let updateCells = try XCTUnwrap(requests.first?["updateCells"] as? [String: Any])
+    let start = try XCTUnwrap(updateCells["start"] as? [String: Any])
+    XCTAssertEqual(start["rowIndex"] as? Int, 6)     // 0-indexed
+    XCTAssertEqual(start["columnIndex"] as? Int, 3)  // column D, 0-indexed
+  }
+
   // MARK: - deleteRow
 
   func test_deleteRow_sendsDeleteDimensionRequest() async throws {

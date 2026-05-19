@@ -31,6 +31,48 @@ public struct AddedTranslation: Encodable {
 
 public protocol AddingTranslation {
   func add(_ translation: NewTranslation) async throws -> AddedTranslation
+  func addBatch(_ batch: AddTranslationBatch) async throws -> AddedBatch
+}
+
+public struct NewTranslationBatchItem: Equatable {
+  public let section: String
+  public let key: String
+  public let assignments: [ValueAssignment]
+
+  public init(section: String, key: String, assignments: [ValueAssignment]) {
+    self.section = section
+    self.key = key
+    self.assignments = assignments
+  }
+}
+
+public struct AddTranslationBatch: Equatable {
+  public let items: [NewTranslationBatchItem]
+  public let allowNewSections: Bool
+  public let dryRun: Bool
+
+  public init(items: [NewTranslationBatchItem], allowNewSections: Bool, dryRun: Bool) {
+    self.items = items
+    self.allowNewSections = allowNewSections
+    self.dryRun = dryRun
+  }
+}
+
+public struct AddedBatchEntry: Encodable {
+  public let section: String
+  public let key: String
+  public let rowIndex: Int
+  public let createdNewSection: Bool
+}
+
+public struct AddedBatch: Encodable {
+  public let totalAdded: Int
+  public let createdSections: [String]
+  public let resolvedDefaultForm: String
+  public let languagesWritten: [String]
+  public let languagesSkipped: [String]
+  public let items: [AddedBatchEntry]
+  public let dryRun: Bool
 }
 
 public struct AddTranslationUseCase: AddingTranslation {
@@ -203,6 +245,167 @@ public struct AddTranslationUseCase: AddingTranslation {
       .sorted { $0.distance < $1.distance }
       .prefix(limit)
       .map(\.name)
+  }
+}
+
+// MARK: - Batch
+
+extension AddTranslationUseCase {
+  public func addBatch(_ batch: AddTranslationBatch) async throws -> AddedBatch {
+    let sheets = try await sheetDataLoader.loadSheets()
+    guard let canonical = CanonicalSheetSelector.pick(from: sheets, preferred: preferredSheet) else {
+      throw AgentError(code: "no_sheets", message: "No language sheets found in the spreadsheet.")
+    }
+
+    try assertTabsAligned(sheets: sheets, canonical: canonical)
+
+    // Validate plural forms up-front so we can fail fast without doing any work.
+    for item in batch.items {
+      for a in item.assignments {
+        if let form = a.form, PluralColumnLayout.column(forForm: form) == nil {
+          throw AgentError(
+            code: "invalid_plural_form",
+            message: "Unknown plural form '\(form)'. Valid: \(PluralColumnLayout.formsInColumnOrder.joined(separator: ", "))",
+            details: ["form": form]
+          )
+        }
+      }
+    }
+
+    // Reject duplicates against the canonical sheet AND within the batch itself.
+    var seenIdentities = Set(canonical.entries.map { "\($0.section)::\($0.key)" })
+    for item in batch.items {
+      let identity = "\(item.section)::\(item.key)"
+      if seenIdentities.contains(identity) {
+        throw AgentError(
+          code: "duplicate_key",
+          message: "Key '\(item.key)' already exists in section '\(item.section)'.",
+          details: ["section": item.section, "key": item.key]
+        )
+      }
+      seenIdentities.insert(identity)
+    }
+
+    let defaultForm = PluralColumnLayout.detectDefaultForm(in: canonical.entries)
+    let existingSections = Set(canonical.entries.map(\.section))
+
+    // Group items by section, preserving first-seen order so multiple items going to the same
+    // section land as a contiguous block of consecutive rows.
+    var sectionOrder: [String] = []
+    var itemsBySection: [String: [NewTranslationBatchItem]] = [:]
+    for item in batch.items {
+      if itemsBySection[item.section] == nil {
+        sectionOrder.append(item.section)
+      }
+      itemsBySection[item.section, default: []].append(item)
+    }
+
+    struct SectionPlan {
+      let section: String
+      let firstRow: Int
+      let isNew: Bool
+      let items: [NewTranslationBatchItem]
+    }
+
+    var plans: [SectionPlan] = []
+    // Tracks the last row "used" by planning so far. New sections appended at the bottom
+    // advance this cursor by (their item count) — each new section also reserves one blank
+    // separator row above itself, baked into the `+2` offset below.
+    var newSectionCursor = canonical.entries.last?.sheetRow ?? 1
+
+    for section in sectionOrder {
+      guard let sectionItems = itemsBySection[section] else { continue }
+      if existingSections.contains(section) {
+        let lastInSection = canonical.entries.last { $0.section == section }!
+        plans.append(SectionPlan(
+          section: section,
+          firstRow: lastInSection.sheetRow + 1,
+          isNew: false,
+          items: sectionItems
+        ))
+      } else {
+        guard batch.allowNewSections else {
+          let suggestions = Self.closestSections(to: section, in: canonical.entries, limit: 3)
+          throw AgentError(
+            code: "unknown_section",
+            message: "Section '\(section)' does not exist. Pass --new-section to create it. Closest matches: \(suggestions.joined(separator: ", "))",
+            details: ["suggestions": suggestions.joined(separator: ",")]
+          )
+        }
+        let firstRow = newSectionCursor + 2
+        plans.append(SectionPlan(
+          section: section,
+          firstRow: firstRow,
+          isNew: true,
+          items: sectionItems
+        ))
+        newSectionCursor = firstRow + sectionItems.count - 1
+      }
+    }
+
+    // Build the per-tab edits. Each plan produces one edit per language tab so the same row
+    // range receives the right cells in every language sheet — keeping the tabs aligned.
+    var edits: [SheetBatchEdit] = []
+    var addedItems: [AddedBatchEntry] = []
+    var createdSections: [String] = []
+
+    for plan in plans {
+      if plan.isNew {
+        createdSections.append(plan.section)
+      }
+      var nextRow = plan.firstRow
+      for item in plan.items {
+        addedItems.append(AddedBatchEntry(
+          section: item.section,
+          key: item.key,
+          rowIndex: nextRow,
+          createdNewSection: plan.isNew
+        ))
+        nextRow += 1
+      }
+      for sheet in sheets {
+        let rows: [[String]] = plan.items.map { item in
+          let langAssignments = item.assignments.filter { $0.language == sheet.languageCode }
+          return Self.buildRowCells(
+            section: item.section,
+            key: item.key,
+            assignments: langAssignments,
+            defaultForm: defaultForm
+          )
+        }
+        edits.append(SheetBatchEdit(
+          sheetTab: sheet.language,
+          startRow: plan.firstRow,
+          rows: rows,
+          mode: plan.isNew ? .writeOnly : .insertRows
+        ))
+      }
+    }
+
+    let allLangsTouched = Set(batch.items.flatMap { $0.assignments.map(\.language) })
+    var languagesWritten: [String] = []
+    var languagesSkipped: [String] = []
+    for sheet in sheets {
+      if allLangsTouched.contains(sheet.languageCode) {
+        languagesWritten.append(sheet.language)
+      } else {
+        languagesSkipped.append(sheet.language)
+      }
+    }
+
+    if !batch.dryRun {
+      try await writer.applyBatchEdits(edits)
+    }
+
+    return AddedBatch(
+      totalAdded: batch.items.count,
+      createdSections: createdSections,
+      resolvedDefaultForm: defaultForm,
+      languagesWritten: languagesWritten,
+      languagesSkipped: languagesSkipped,
+      items: addedItems,
+      dryRun: batch.dryRun
+    )
   }
 }
 

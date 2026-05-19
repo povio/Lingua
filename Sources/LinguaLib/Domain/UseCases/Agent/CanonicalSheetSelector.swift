@@ -12,4 +12,18 @@ enum CanonicalSheetSelector {
     }
     return sheets.first
   }
+
+  /// Picks the canonical tab name when only metadata is available — same preference order as
+  /// `pick(from:preferred:)`, but operates on raw tab titles to avoid fetching every tab's data.
+  static func pickTabName(from tabNames: [String], preferred: String?) -> String? {
+    if let preferred, tabNames.contains(preferred) { return preferred }
+    if let english = tabNames.first(where: { languageCode(forTabName: $0) == "en" }) { return english }
+    return tabNames.first
+  }
+
+  /// Derives the locale prefix from a tab title using the same rule as `LocalizationSheet.languageCode`.
+  static func languageCode(forTabName tabName: String) -> String {
+    guard let separator = tabName.firstIndex(of: "_") else { return tabName }
+    return String(tabName[..<separator])
+  }
 }
