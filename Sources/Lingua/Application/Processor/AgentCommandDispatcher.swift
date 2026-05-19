@@ -125,9 +125,9 @@ struct AgentCommandDispatcher {
     }
   }
 
-  // MARK: - Helpers
+  // MARK: - Helpers (internal for test access)
 
-  private func loadConfig(_ args: CommandLineArguments) async throws -> Config.Localization {
+  func loadConfig(_ args: CommandLineArguments) async throws -> Config.Localization {
     guard let path = args.configFilePath else {
       throw AgentError(code: "missing_config", message: "Missing config file path")
     }
@@ -138,7 +138,7 @@ struct AgentCommandDispatcher {
     return localization
   }
 
-  private func buildNewTranslation(_ args: CommandLineArguments) throws -> NewTranslation {
+  func buildNewTranslation(_ args: CommandLineArguments) throws -> NewTranslation {
     guard let section = args.flags["section"] else {
       throw AgentError(code: "missing_argument", message: "--section is required")
     }
@@ -158,7 +158,7 @@ struct AgentCommandDispatcher {
     )
   }
 
-  private func buildTranslationUpdate(_ args: CommandLineArguments) throws -> TranslationUpdate {
+  func buildTranslationUpdate(_ args: CommandLineArguments) throws -> TranslationUpdate {
     guard let section = args.flags["section"] else {
       throw AgentError(code: "missing_argument", message: "--section is required")
     }
@@ -179,7 +179,7 @@ struct AgentCommandDispatcher {
   ///
   /// `form == nil` means "use the sheet's detected default plural form" — for most templates
   /// that's `one`, but the use case decides at execution time by inspecting the canonical sheet.
-  private func parseValueFlags(_ raw: [String]) throws -> [ValueAssignment] {
+  func parseValueFlags(_ raw: [String]) throws -> [ValueAssignment] {
     var out: [ValueAssignment] = []
     for entry in raw {
       guard let eq = entry.firstIndex(of: "=") else {
@@ -212,7 +212,7 @@ struct AgentCommandDispatcher {
   /// If the caller passed `--sync ios|android|ios,android`, regenerate the corresponding
   /// platform files inline so the agent doesn't need to issue a separate `lingua sync` call.
   /// Silently a no-op when the flag is absent — keeps the original two-step flow available.
-  private func maybeRunSync(args: CommandLineArguments, config: Config.Localization) async throws {
+  func maybeRunSync(args: CommandLineArguments, config: Config.Localization) async throws {
     guard let raw = args.flags["sync"] else { return }
     let tokens = raw.split(separator: ",").map { String($0).trimmingCharacters(in: .whitespaces).lowercased() }
     var platforms: [LocalizationPlatform] = []
