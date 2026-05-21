@@ -1,0 +1,62 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write  # needed to create a GitHub Release
+
+jobs:
+  release:
+    runs-on: macos-26
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Build arm64
+        run: swift build --configuration release --arch arm64
+
+      - name: Build x86_64
+        run: swift build --configuration release --arch x86_64
+
+      - name: Create Universal Binary
+        run: |
+          lipo -create \
+            -output Lingua \
+            .build/arm64-apple-macosx/release/Lingua \
+            .build/x86_64-apple-macosx/release/Lingua
+          lipo -info Lingua
+
+      - name: Compute SHA256
+        id: sha
+        run: echo "sha256=$(shasum -a 256 Lingua | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ github.ref_name }}" Lingua \
+            --title "${{ github.ref_name }}" \
+            --generate-notes
+
+      - name: Update Homebrew Formula
+        env:
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          TAG: ${{ github.ref_name }}
+          SHA256: ${{ steps.sha.outputs.sha256 }}
+        run: |
+          git clone "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/povio/homebrew-lingua.git" tap
+          cd tap
+
+          NEW_URL="https://github.com/povio/Lingua/releases/download/${TAG}/Lingua"
+          sed -i '' "s|url \".*\"|url \"${NEW_URL}\"|" lingua.rb
+          sed -i '' "s|sha256 \".*\"|sha256 \"${SHA256}\"|" lingua.rb
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add lingua.rb
+          git commit -m "Lingua ${TAG}"
+          git push
