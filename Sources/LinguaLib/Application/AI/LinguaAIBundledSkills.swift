@@ -25,10 +25,10 @@ public enum LinguaAIBundledSkills {
   public static let addTranslation = """
   ---
   name: lingua-add-translation
-  description: Add a new localized string to the project's Google Sheet via the Lingua CLI, then regenerate platform localization files. Use this whenever the user asks for a new user-facing string, or whenever you would otherwise hardcode a user-facing string in code.
+  description: Add one or more localized strings to the project's Google Sheet via the Lingua CLI, then regenerate platform localization files. Use this whenever the user asks for a new user-facing string, or whenever you would otherwise hardcode a user-facing string in code.
   ---
 
-  # Adding a new translation with Lingua
+  # Adding new translations with Lingua
 
   Lingua manages localization in a Google Sheet and generates platform files (iOS `.strings` /
   `.stringsdict` / `Lingua.swift`, Android `strings.xml`) from it. Translations are organized
@@ -50,7 +50,8 @@ public enum LinguaAIBundledSkills {
   If a `Lingua.<Section>.<key>` reference doesn't compile after you added a key, the answer is
   **never** to edit `Lingua.swift`. The answer is always one of:
 
-  1. You forgot to run `lingua sync` after `lingua add` → run it now.
+  1. You forgot to run `lingua sync` after `lingua add` → run it now (or use `--sync ios`
+     on the add).
   2. The section name is lowercase but should be capitalized (`login` vs `Login`) → use
      `lingua delete` to remove the bad rows and re-add with the correct casing.
   3. The key contains characters that don't map cleanly to a Swift identifier → re-add with a
@@ -58,28 +59,28 @@ public enum LinguaAIBundledSkills {
 
   ## Inputs you must gather before running
 
-  - The English text of the new string.
-  - The screen / feature it belongs to (used to pick the section).
+  - The English text of every new string (gather them ALL up front, even if there are 20).
+  - The screen / feature they belong to (used to pick the section).
   - The path to the project's `lingua_config.json`.
 
   ## Procedure
 
-  1. **Check for an existing key first.** Duplication is the most common mistake.
+  1. **Check for existing keys first** with a single multi-query find — this avoids three
+     separate sheet fetches when you have several candidates:
      ```bash
-     lingua find ./lingua_config.json "<english text>"
+     lingua find ./lingua_config.json "settings" "account" "display name"
      ```
      If a close match exists, **stop and suggest reusing it** instead of creating a new key.
 
-  2. **List existing sections + languages** so you place the new key in the right group AND
+  2. **List existing sections + languages** so you place the new keys in the right group AND
      know which languages need values.
      ```bash
      lingua sections ./lingua_config.json
      ```
      Read the JSON output. Two things matter:
      - `data.languages` is the list of language tabs in the sheet (e.g. `[{"code":"en",...},{"code":"de",...}]`).
-       **You must provide a `--value` for every language code in this list** (see step 4).
-       Skipping a language leaves the row blank in that tab and risks misaligning future
-       writes.
+       **You must provide a value for every language code in this list.** Skipping a language
+       leaves the row blank in that tab and risks misaligning future writes.
      - `data.sections` is the list of existing sections. Pick the right one using these
        heuristics, in order:
        1. The feature folder of the file the new string will be used in
@@ -89,35 +90,47 @@ public enum LinguaAIBundledSkills {
           *"I'm about to create a new section `X`, is that what you want?"* before passing
           `--new-section`.
 
-  3. **Pick a `snake_case` key** that's specific to the screen/intent, not the literal text.
-     Prefer `empty_state_message` over `no_favorites_yet` — keys should describe purpose, not
-     content.
+  3. **Pick a `snake_case` key** for each string that's specific to the screen/intent, not the
+     literal text. Prefer `empty_state_message` over `no_favorites_yet` — keys should describe
+     purpose, not content.
 
-  4. **Add the row** with a `--value` for **every language** returned by `lingua sections`.
-     If you don't speak a language, translate the English text yourself or ask the user — but
-     never skip a language.
-     ```bash
-     lingua add ./lingua_config.json \
-       --section onboarding \
-       --key cta_start \
-       --value en="Get started" \
-       --value de="Loslegen"
+  4. **Submit ALL strings in one batched call.** This is dramatically faster than chaining
+     individual `lingua add` invocations (each one re-fetches the whole sheet and re-signs the
+     service account JWT). Write the entries to a JSON file and pass it via `--batch`. Always
+     include `--sync ios` (and/or `--sync android`) so the platform files are regenerated in
+     the same invocation.
+
+     **`/tmp/lingua-batch.json`** — bare JSON array, plain strings for non-plural, `{form:
+     text}` objects for plurals:
+     ```json
+     [
+       {"section": "Settings", "key": "title", "values": {"en": "Settings", "de": "Einstellungen"}},
+       {"section": "Settings", "key": "account", "values": {"en": "Account", "de": "Konto"}},
+       {"section": "Settings", "key": "item_count", "values": {
+         "en": {"one": "1 item", "other": "%d items"},
+         "de": {"one": "1 Artikel", "other": "%d Artikel"}
+       }}
+     ]
      ```
 
-     **Plural form column:** by default `lingua add` writes the value into whichever plural
-     column the sheet's existing rows use (auto-detected — usually `one` for non-plural strings,
-     matching the README template). You almost never need to think about this. Only override
-     when adding an actually-plural string:
      ```bash
-     lingua add ./lingua_config.json \
-       --section cart \
-       --key item_count \
-       --value en:one="1 item" --value en:other="%d items" \
-       --value de:one="1 Artikel" --value de:other="%d Artikel"
+     lingua add ./lingua_config.json --batch /tmp/lingua-batch.json --sync ios
+     # Add --new-section if the batch introduces a section that doesn't exist yet.
+     # --new-section is a BOOLEAN switch — it takes NO value. The section name lives in
+     # the JSON. Wrong: `--new-section Settings`. Right: just `--new-section`.
+     # Add --sync android too (or use --sync ios,android) if the project ships for Android.
      ```
-     The syntax is `<lang>:<form>=<text>` where `<form>` is one of `zero`, `one`, `two`, `few`,
-     `many`, `other` (CLDR plural categories). For non-plural strings, omit the `:form` part
-     entirely — Lingua will pick the right column for you.
+
+     Plural forms must be one of `zero`, `one`, `two`, `few`, `many`, `other` (CLDR plural
+     categories). For non-plural strings, use the plain `"<lang>": "<text>"` form — Lingua
+     picks the right column automatically.
+
+     **Only fall back to per-string flags** if you're truly adding exactly one key:
+     ```bash
+     lingua add ./lingua_config.json --section onboarding --key cta_start \\
+       --value en="Get started" --value de="Loslegen" --sync ios
+     ```
+
      Parse the JSON response. Handle errors:
      - `error.code == "duplicate_key"` → stop, surface the existing row, suggest reusing it.
      - `error.code == "unknown_section"` → re-read `error.details.suggestions`, ask the user.
@@ -129,26 +142,19 @@ public enum LinguaAIBundledSkills {
      - `error.code == "missing_service_account"` → tell the user to set
        `serviceAccountKeyPath` in their `lingua_config.json` and run `lingua doctor`.
 
-  5. **Regenerate platform files.**
-     ```bash
-     lingua sync ./lingua_config.json --platform ios
-     ```
-     (Also run with `--platform android` if both are configured.)
-
-  6. **Use the new key in code.** The sheet stores `snake_case`, but the generated code on
+  5. **Use the new keys in code.** The sheet stores `snake_case`, but the generated code on
      each platform transforms it. **Never call the snake_case key from code** — always use
-     the transformed identifier the generator produced. After `lingua sync`, open
-     `Lingua.swift` (iOS) / `strings.xml` (Android) and copy the exact symbol if you're not
-     sure.
+     the transformed identifier the generator produced.
 
-     **iOS — `Lingua.<Section>.<key>`** (transformations applied by `lingua sync`):
-     - Section name → `PascalCase` (`general` → `General`, `empty_states` → `EmptyStates`).
-     - Key → `camelCase` (`app_description` → `appDescription`, `cta_start` → `ctaStart`,
-       `empty_state_message` → `emptyStateMessage`).
-     - Final reference: `Lingua.General.appDescription`, **not** `Lingua.General.app_description`.
-     - Reserved Swift identifiers get backticked automatically (`class` → `` `class` ``).
-     - If `Lingua.<Section>.<key>` does not compile, the cause is almost always that you
-       wrote the raw `snake_case` key instead of the camelCased one. Re-check `Lingua.swift`.
+     **iOS — non-plural keys** become `Lingua.<PascalSection>.<camelKey>`:
+     - Section `general`, key `app_description` → `Lingua.General.appDescription`.
+     - **Not** `Lingua.General.app_description`. Section is PascalCase, key is camelCase.
+
+     **iOS — plural keys** become `Lingua.<PascalSection>.<camelKey>(_:)` — a function that
+     takes the count and returns the localized string:
+     - Section `settings`, key `photo_count` (plural) → `Lingua.Settings.photoCount(photoCount)`.
+     - The count argument is required for plurals; the generated stringsdict resolves it via
+       `%d`. If you see a plain `Lingua.Settings.photoCount` it won't compile — pass the count.
 
      **Android — `R.string.<section>_<key>`** (lowercased, snake_case preserved):
      - Identifier is `(section + "_" + key).lowercased()`.
@@ -156,6 +162,10 @@ public enum LinguaAIBundledSkills {
      - Unlike iOS, Android keeps `snake_case`. Don't camelCase it.
      - When in doubt, grep `strings.xml` for the `<string name="...">` entry and use that
        name verbatim.
+
+     Reserved Swift identifiers get backticked automatically (`class` → `` `class` ``).
+     If a reference doesn't compile, the cause is almost always (a) you wrote `snake_case`
+     instead of `camelCase`, or (b) you forgot the `(_:)` count argument on a plural.
 
   > **Section separators are automatic.** When `lingua add --new-section` creates a new
   > section in a non-empty sheet, it automatically leaves one blank row above the new section
@@ -165,6 +175,11 @@ public enum LinguaAIBundledSkills {
   ## Hard rules
 
   - Always run `lingua find` and `lingua sections` *before* `lingua add`. Never skip them.
+  - **Prefer `--batch` for any non-trivial add** (≥ 2 strings, or when section/plural mix
+    means you'd otherwise chain commands). One batched call replaces N sequential ones, and
+    each sequential `lingua add` costs ~3–5 seconds of fixed overhead.
+  - Always pair the add with `--sync ios` (or `--sync ios,android`) so the platform files
+    regenerate in the same invocation — saves another full sheet round-trip.
   - Never pass `--new-section` without explicit user confirmation.
   - **Never create or edit `Lingua.swift`, `Localizable.strings`, `Localizable.stringsdict`, or
     Android `strings.xml`.** They're regenerated from the Google Sheet by `lingua sync`. If they look
@@ -178,51 +193,59 @@ public enum LinguaAIBundledSkills {
   public static let updateTranslation = """
   ---
   name: lingua-update-translation
-  description: Update the value of an existing localized string in the project's Google Sheet via the Lingua CLI, then regenerate platform localization files. Use when the user asks to fix wording, change a translation, or rename a localized message.
+  description: Update one or more existing localized strings in the project's Google Sheet via the Lingua CLI, then regenerate platform localization files. Use when the user asks to fix wording, change a translation, or rename a localized message.
   ---
 
-  # Updating an existing translation with Lingua
+  # Updating existing translations with Lingua
 
   ## Procedure
 
-  1. **Find the row.**
+  1. **Find the row(s).** Pass every search term in a single multi-query find so the sheet is
+     only loaded once:
      ```bash
-     lingua find ./lingua_config.json "<text or key>"
+     lingua find ./lingua_config.json "<text or key>" "<another>"
      ```
      If multiple matches, ask the user which `(section, key)` to update.
 
-  2. **Update in place.**
-     ```bash
-     lingua update ./lingua_config.json \
-       --section onboarding \
-       --key cta_start \
-       --value en="Begin" \
-       --value de="Anfangen"
+  2. **Update in place.** For two or more keys, batch them — the per-call sheet fetch /
+     auth cost is the same whether you change one cell or one hundred, so don't pay it twice.
+
+     **`/tmp/lingua-update.json`** — same shape as `lingua add --batch`:
+     ```json
+     [
+       {"section": "Settings", "key": "title", "values": {"en": "Preferences", "de": "Einstellungen"}},
+       {"section": "Cart", "key": "item_count", "values": {
+         "en": {"other": "%d things"}
+       }}
+     ]
      ```
+     ```bash
+     lingua update ./lingua_config.json --batch /tmp/lingua-update.json --sync ios
+     ```
+
+     **Single-key fallback** (only when you have exactly one row to change):
+     ```bash
+     lingua update ./lingua_config.json --section onboarding --key cta_start \\
+       --value en="Begin" --value de="Anfangen" --sync ios
+     ```
+
      `lingua update` only touches the cells you specify. By default it updates whichever plural
-     column the existing row uses (so non-plural strings stay non-plural). To target a specific
-     plural form, use `--value <lang>:<form>=<text>`:
-     ```bash
-     lingua update ./lingua_config.json \
-       --section cart \
-       --key item_count \
-       --value en:other="%d things"
-     ```
+     column the existing row already uses (so non-plural strings stay non-plural). To target a
+     specific plural form, use the `{form: text}` object form in the batch JSON, or
+     `--value <lang>:<form>=<text>` on the CLI.
 
      Errors to handle:
-     - `error.code == "not_found"` → the row doesn't exist; suggest `lingua-add-translation`.
+     - `error.code == "not_found"` (single mode) or a non-empty `data.notFound[]` (batch mode)
+       → the row doesn't exist; suggest `lingua-add-translation`.
      - `error.code == "tabs_out_of_sync"` → run `lingua doctor`.
 
-  3. **Regenerate platform files.**
-     ```bash
-     lingua sync ./lingua_config.json --platform ios
-     ```
-
-  4. **Reference the key from code with the platform-transformed identifier**, never the raw
+  3. **Reference the key from code with the platform-transformed identifier**, never the raw
      `snake_case` key from the sheet:
-     - **iOS**: `Lingua.<PascalSection>.<camelKey>` — section becomes `PascalCase`, key becomes
-       `camelCase`. e.g. sheet `General / app_description` → `Lingua.General.appDescription`.
-       **Not** `Lingua.General.app_description`.
+     - **iOS non-plural**: `Lingua.<PascalSection>.<camelKey>` — section becomes `PascalCase`,
+       key becomes `camelCase`. e.g. sheet `General / app_description` →
+       `Lingua.General.appDescription`. **Not** `Lingua.General.app_description`.
+     - **iOS plural**: `Lingua.<PascalSection>.<camelKey>(_:)` — takes the count argument.
+       e.g. sheet `Settings / photo_count` → `Lingua.Settings.photoCount(photoCount)`.
      - **Android**: `R.string.<section>_<key>` lowercased, snake_case preserved. e.g.
        `R.string.general_app_description`.
      - If unsure, open the regenerated `Lingua.swift` / `strings.xml` and copy the symbol.
@@ -230,7 +253,9 @@ public enum LinguaAIBundledSkills {
   ## Hard rules
 
   - `update` never moves rows. It only changes values in place.
-  - Only languages you pass with `--value` are touched. Others stay as-is.
+  - Only languages you pass values for are touched. Others stay as-is.
+  - **Prefer `--batch` and `--sync` together** for any non-trivial update — same speed
+    rationale as `lingua-add-translation`.
   - **Never create or edit `Lingua.swift`, `Localizable.strings`, `Localizable.stringsdict`, or
     Android `strings.xml`.** They're regenerated from the Google Sheet by `lingua sync`. If a string
     on screen still looks wrong after `lingua update`, run `lingua sync` again — don't reach
@@ -251,7 +276,19 @@ public enum LinguaAIBundledSkills {
   lingua find ./lingua_config.json "save changes"
   ```
 
-  The JSON response contains a ranked list of matches with `section`, `key`, and `englishValue`.
+  When you have **several candidate strings** to look up, pass them as additional positional
+  arguments in one call — Lingua loads the sheet once and runs every search against the same
+  snapshot:
+
+  ```bash
+  lingua find ./lingua_config.json "save changes" "discard" "are you sure"
+  ```
+
+  The single-query call returns `{canonicalSheet, query, matches}`. The multi-query call
+  returns `{canonicalSheet, results}` where each `results[i]` has its own `query` and
+  `matches`.
+
+  Each match contains `section`, `key`, and `englishValue`.
   Use the platform-transformed identifier — never the raw `snake_case` key from the sheet:
 
   - **iOS**: `Lingua.<PascalSection>.<camelKey>` — section is `PascalCase`, key is `camelCase`.

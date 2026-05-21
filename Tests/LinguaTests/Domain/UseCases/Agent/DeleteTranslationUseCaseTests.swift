@@ -82,4 +82,5 @@ private final class SpyWriter: GoogleSheetsWriting {
   func deleteRow(sheetTab: String, oneBasedRowIndex: Int) async throws {
     deletes.append((sheetTab, oneBasedRowIndex))
   }
+  func applyBatchEdits(_ edits: [SheetBatchEdit]) async throws {}
 }

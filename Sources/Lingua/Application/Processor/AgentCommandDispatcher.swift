@@ -10,6 +10,13 @@ struct AgentCommandDispatcher {
   let output: AgentJSONOutput
 
   func dispatch(_ args: CommandLineArguments) async throws {
+    // Per-subcommand --help. Accepts the flag whether it appears before or after the
+    // config path so `lingua add --help` and `lingua add ./config.json --help` both work.
+    if args.booleanFlags.contains("help") || args.booleanFlags.contains("h") {
+      print(HelpText.help(for: args.command))
+      return
+    }
+
     do {
       switch args.command {
       case .sections:
@@ -24,24 +31,56 @@ struct AgentCommandDispatcher {
 
       case .find:
         let config = try await loadConfig(args)
-        guard let query = args.positional.first else {
-          throw AgentError(code: "missing_argument", message: "find requires a query argument: lingua find <config> <query>")
+        let queries = args.positional + (args.multiValueFlags["query"] ?? [])
+        guard !queries.isEmpty else {
+          throw AgentError(code: "missing_argument", message: "find requires at least one query argument: lingua find <config> <query> [<query> ...]")
         }
         let limit = Int(args.flags["limit"] ?? "10") ?? 10
-        let result = try await agentFactory.makeFindTranslation(config: config).find(query: query, limit: limit)
-        try output.emitSuccess(result)
+        let finder = agentFactory.makeFindTranslation(config: config)
+        // Single-query keeps the original flat `{canonicalSheet, query, matches}` envelope so
+        // existing callers don't break. Multi-query returns the new `{canonicalSheet, results}`
+        // envelope and reuses a single sheet load for all queries.
+        if queries.count == 1 {
+          let result = try await finder.find(query: queries[0], limit: limit)
+          try output.emitSuccess(result)
+        } else {
+          let result = try await finder.find(queries: queries, limit: limit)
+          try output.emitSuccess(result)
+        }
 
       case .add:
         let config = try await loadConfig(args)
-        let translation = try buildNewTranslation(args)
-        let result = try await agentFactory.makeAddTranslation(config: config).add(translation)
-        try output.emitSuccess(result)
+        let useCase = try agentFactory.makeAddTranslation(config: config)
+        if let batchPath = args.flags["batch"] {
+          let batch = try BatchFileLoader.loadAddBatch(
+            path: batchPath,
+            allowNewSections: args.booleanFlags.contains("new-section"),
+            dryRun: args.booleanFlags.contains("dry-run")
+          )
+          let result = try await useCase.addBatch(batch)
+          try await maybeRunSync(args: args, config: config)
+          try output.emitSuccess(result)
+        } else {
+          let translation = try buildNewTranslation(args)
+          let result = try await useCase.add(translation)
+          try await maybeRunSync(args: args, config: config)
+          try output.emitSuccess(result)
+        }
 
       case .update:
         let config = try await loadConfig(args)
-        let update = try buildTranslationUpdate(args)
-        let result = try await agentFactory.makeUpdateTranslation(config: config).update(update)
-        try output.emitSuccess(result)
+        let useCase = try agentFactory.makeUpdateTranslation(config: config)
+        if let batchPath = args.flags["batch"] {
+          let updates = try BatchFileLoader.loadUpdateBatch(path: batchPath)
+          let result = try await useCase.updateBatch(updates)
+          try await maybeRunSync(args: args, config: config)
+          try output.emitSuccess(result)
+        } else {
+          let update = try buildTranslationUpdate(args)
+          let result = try await useCase.update(update)
+          try await maybeRunSync(args: args, config: config)
+          try output.emitSuccess(result)
+        }
 
       case .delete:
         let config = try await loadConfig(args)
@@ -86,9 +125,9 @@ struct AgentCommandDispatcher {
     }
   }
 
-  // MARK: - Helpers
+  // MARK: - Helpers (internal for test access)
 
-  private func loadConfig(_ args: CommandLineArguments) async throws -> Config.Localization {
+  func loadConfig(_ args: CommandLineArguments) async throws -> Config.Localization {
     guard let path = args.configFilePath else {
       throw AgentError(code: "missing_config", message: "Missing config file path")
     }
@@ -99,7 +138,7 @@ struct AgentCommandDispatcher {
     return localization
   }
 
-  private func buildNewTranslation(_ args: CommandLineArguments) throws -> NewTranslation {
+  func buildNewTranslation(_ args: CommandLineArguments) throws -> NewTranslation {
     guard let section = args.flags["section"] else {
       throw AgentError(code: "missing_argument", message: "--section is required")
     }
@@ -119,7 +158,7 @@ struct AgentCommandDispatcher {
     )
   }
 
-  private func buildTranslationUpdate(_ args: CommandLineArguments) throws -> TranslationUpdate {
+  func buildTranslationUpdate(_ args: CommandLineArguments) throws -> TranslationUpdate {
     guard let section = args.flags["section"] else {
       throw AgentError(code: "missing_argument", message: "--section is required")
     }
@@ -140,7 +179,7 @@ struct AgentCommandDispatcher {
   ///
   /// `form == nil` means "use the sheet's detected default plural form" — for most templates
   /// that's `one`, but the use case decides at execution time by inspecting the canonical sheet.
-  private func parseValueFlags(_ raw: [String]) throws -> [ValueAssignment] {
+  func parseValueFlags(_ raw: [String]) throws -> [ValueAssignment] {
     var out: [ValueAssignment] = []
     for entry in raw {
       guard let eq = entry.firstIndex(of: "=") else {
@@ -168,6 +207,31 @@ struct AgentCommandDispatcher {
       out.append(ValueAssignment(language: language, form: form, text: text))
     }
     return out
+  }
+
+  /// If the caller passed `--sync ios|android|ios,android`, regenerate the corresponding
+  /// platform files inline so the agent doesn't need to issue a separate `lingua sync` call.
+  /// Silently a no-op when the flag is absent — keeps the original two-step flow available.
+  func maybeRunSync(args: CommandLineArguments, config: Config.Localization) async throws {
+    guard let raw = args.flags["sync"] else { return }
+    let tokens = raw.split(separator: ",").map { String($0).trimmingCharacters(in: .whitespaces).lowercased() }
+    var platforms: [LocalizationPlatform] = []
+    for token in tokens {
+      guard let platform = LocalizationPlatform(rawValue: token) else {
+        throw AgentError(
+          code: "invalid_sync_value",
+          message: "--sync values must be one or more of: ios, android (got '\(token)')"
+        )
+      }
+      if !platforms.contains(platform) { platforms.append(platform) }
+    }
+    if platforms.isEmpty {
+      throw AgentError(code: "invalid_sync_value", message: "--sync requires at least one platform.")
+    }
+    let module = localizationModuleFactory(config)
+    for platform in platforms {
+      try await module.localize(for: platform)
+    }
   }
 
   private func handleAICommand(_ args: CommandLineArguments) throws {

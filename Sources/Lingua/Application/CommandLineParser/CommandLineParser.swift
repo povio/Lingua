@@ -6,6 +6,24 @@ protocol CommandLineParsable {
 }
 
 final class CommandLineParser: CommandLineParsable {
+  /// Flag names that may appear more than once on the command line and are collected into
+  /// `multiValueFlags` (preserving order) rather than overwriting each other in `flags`.
+  static let multiValueFlagNames: Set<String> = ["value", "query"]
+
+  /// Flag names that are *always* boolean — they never consume the following token as a
+  /// value, even if that token doesn't start with `--`. Without this whitelist the parser
+  /// would silently swallow stray positional args (e.g. `--new-section Settings` was
+  /// reading `Settings` as the value of `--new-section`, leaving the boolean unset and
+  /// causing the use case to reject the brand-new section).
+  static let booleanFlagNames: Set<String> = [
+    "new-section",
+    "dry-run",
+    "global",
+    "force",
+    "help",
+    "h"
+  ]
+
   func parse(arguments: [String]) throws -> CommandLineArguments {
     if arguments.count <= 1 {
       // Bare invocation: show help instead of "not enough arguments".
@@ -49,10 +67,23 @@ final class CommandLineParser: CommandLineParsable {
 }
 
 private extension CommandLineParser {
+  static func isHelpToken(_ token: String) -> Bool {
+    let lower = token.lowercased()
+    return lower == "--help" || lower == "-h" || lower == "help"
+  }
+
   func parseAgentCommand(_ command: Command, arguments: [String]) throws -> CommandLineArguments {
     // Layout: lingua <command> <config.json> [positional...] [--flag value] [--bool]
     try validateArgumentCount(arguments, count: 2)
-    let configPath = arguments[2]
+    let configPathOrFlag = arguments[2]
+
+    // Per-subcommand --help: `lingua add --help` (and -h / help) prints help for that
+    // subcommand instead of demanding a config path. Mirrors every other CLI's behavior.
+    if Self.isHelpToken(configPathOrFlag) {
+      return CommandLineArguments(command: command, booleanFlags: ["help"])
+    }
+
+    let configPath = configPathOrFlag
     try validateConfigFilePath(configPath)
 
     var positional: [String] = []
@@ -66,9 +97,17 @@ private extension CommandLineParser {
       let token = arguments[i]
       if token.hasPrefix("--") {
         let name = String(token.dropFirst(2))
+        // Known booleans never consume the next token as their value, even if the next
+        // token doesn't start with `--`. Anything trailing such a flag falls through to
+        // the positional path on the next iteration.
+        if Self.booleanFlagNames.contains(name) {
+          booleanFlags.insert(name)
+          i += 1
+          continue
+        }
         if i + 1 < arguments.count, !arguments[i + 1].hasPrefix("--") {
           let value = arguments[i + 1]
-          if name == "value" {
+          if Self.multiValueFlagNames.contains(name) {
             multi[name, default: []].append(value)
           } else if name == "platform" {
             platform = LocalizationPlatform(rawValue: value.lowercased())
@@ -105,6 +144,10 @@ private extension CommandLineParser {
 
     // Layout: lingua ai <install|uninstall|status> [--target claude|cursor|agents|both] [--global] [--force]
     try validateArgumentCount(arguments, count: 2)
+    // `lingua ai --help` / `lingua ai -h` / `lingua ai help` → print the ai subcommand help.
+    if Self.isHelpToken(arguments[2]) {
+      return CommandLineArguments(command: .ai, booleanFlags: ["help"])
+    }
     guard let sub = Command(rawValue: arguments[2].lowercased()),
           [.install, .uninstall, .status].contains(sub) else {
       throw CommandLineParsingError.invalidUsage(
