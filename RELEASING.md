@@ -1,4 +1,6 @@
-# Releasing Lingua CLI
+# Releasing Lingua
+
+## CLI (GitHub Actions)
 
 Releases are fully automated via GitHub Actions. To cut a new release:
 
@@ -14,9 +16,29 @@ That's it. The [release workflow](.github/workflows/release.yml) will:
 - Create a GitHub Release and attach the binary
 - Update the Homebrew formula in [povio/homebrew-lingua](https://github.com/povio/homebrew-lingua)
 
+## macOS App (Xcode Cloud)
+
+The macOS app is distributed via Xcode Cloud. To trigger a release:
+
+1. Make sure all changes are merged to `main`.
+2. Push a version tag with the `app/v` prefix:
+   ```bash
+   git tag app/v1.2.3
+   git push origin app/v1.2.3
+   ```
+
+Xcode Cloud will:
+- Archive the macOS app
+- Distribute to TestFlight (Internal Testing)
+
 ## Version format
 
-Use [semantic versioning](https://semver.org): `vMAJOR.MINOR.PATCH` (e.g. `v1.2.3`).
+Both use [semantic versioning](https://semver.org): `MAJOR.MINOR.PATCH`.
+
+| Target     | Tag format      | Example       |
+|------------|-----------------|---------------|
+| CLI        | `v1.2.3`        | `v1.1.1`      |
+| macOS App  | `app/v1.2.3`    | `app/v1.1.1`  |
 
 ## Prerequisites (one-time setup)
 

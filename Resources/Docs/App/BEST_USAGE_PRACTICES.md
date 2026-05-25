@@ -31,9 +31,11 @@ lingua ios ./lingua_config.json
 mv "$JSON_FILE.bak" $JSON_FILE
 ```
 
-Keep the configuration file with the values like this `<google_api_key>` and `<google_spreadsheet_id>` since the script will replace them by this pattern. Also define `GOOGLE_API_KEY` and `GOOGLE_SPREADSHEET_ID` with the values in your .env file.
+> **Note:** The `sed -i ''` syntax is macOS (BSD sed) specific. On Linux, use `sed -i` without the empty string argument.
 
-Now simply run the script `sh localization.sh` everytime new translations are needed to be import.
+Keep the configuration file with the values like this `<google_api_key>` and `<google_spreadsheet_id>` since the script will replace them by this pattern. Also define `GOOGLE_API_KEY` and `GOOGLE_SPREADSHEET_ID` with the values in your `.env` file. Make sure `.env` is listed in your `.gitignore` to avoid accidentally committing credentials.
+
+Now simply run the script `sh localization.sh` every time new translations need to be imported.
 
 In order to execute the shell script more conveniently, you may alter its permissions using the `chmod +x localization.sh` command. This will set the script to executable mode. Following this, you can execute the script directly using `./localization.sh`. 
 
@@ -62,12 +64,13 @@ sed -i '' "s|<google_api_key>|${GOOGLE_API_KEY}|g" $JSON_FILE
 # Update GOOGLE_SPREADSHEET_ID
 sed -i '' "s|<google_spreadsheet_id>|${GOOGLE_SPREADSHEET_ID}|g" $JSON_FILE
 
-# Print the updated JSON file
-cat $JSON_FILE
-
 # Run the lingua command
 lingua ios ./lingua_config.json
 
 # Restore the original JSON file
 mv "$JSON_FILE.bak" $JSON_FILE
 ```
+
+> **Note:** The `sed -i ''` syntax is macOS (BSD sed) specific. On Linux CI runners, use `sed -i` without the empty string argument.
+
+> **Security:** Avoid printing the substituted config file to CI logs (e.g. via `cat $JSON_FILE`) as it will expose your API key in plain text.

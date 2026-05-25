@@ -1,27 +1,19 @@
 # Lingua Documentation
 
-Welcome to the main documentation repository for **Lingua**. This directory provides a comprehensive guide to our tool, covering both its usage and underlying architecture. Here's a breakdown of the two main sections:
+## App — Usage & Best Practices
 
-## 1. [App - Usage & Best Practices](./App/)
+- [Sheet Structure](./App/SHEET_STRUCTURE.md) — How to structure your Google Sheet (tabs, columns, plural forms, format specifiers).
+- [Best Usage Practices](./App/BEST_USAGE_PRACTICES.md) — Running Lingua locally and in CI/CD pipelines.
+- [AI Agent Usage](./App/AI_AGENT_USAGE.md) — One-time setup, service account configuration, and the full agent-facing subcommand reference.
+- [AI Agent Integration](./App/AI_AGENT_INTEGRATION.md) — Architecture deep-dive: how the agent CLI extensions, bundled skills, and macOS app sandbox flow are implemented.
 
-This section focuses on helping users effectively utilize "Your Tool Name". Here, you'll find:
+## Architecture
 
-- **Usage Instructions**: Step-by-step guides on how to get started and utilize the main features of our tool.
-- **Best Practices**: Tips and recommendations for maximizing the utility and efficiency of **Lingua**.
-- ... and more!
-
-[📁 Click here to explore the App documentation](./App/)
-
-## 2. [Lingua Architecture](./Architecture/)
-
-Dive deeper into the design and structure of **Lingua** with our architecture documentation. This section provides insights into:
-
-- **System Design**: Understand the overall system layout and how different components interact.
-- **Technical Specs**: Details about the technologies used, data flow diagrams, and more.
-- ... and other technical insights!
-
-[📁 Click here to explore the Lingua Architecture documentation](./Architecture/)
+- [Overview](./Architecture/README.md) — Clean Architecture layers (Domain, Infrastructure, Application), component responsibilities, and diagrams.
+- [Domain Layer](./Architecture/Domain/DOMAIN.md) — Entities and use cases.
+- [Localization Domain](./Architecture/Domain/Localization.md) — Localization-specific entities, use cases, and data flow.
+- [Networking](./Architecture/Infrastructure/Networking/README.md) — Networking layer design.
 
 ---
 
-We encourage users to familiarize themselves with both sections to fully understand and utilize **Lingua** to its maximum potential. If you have further questions or feedback, please don't hesitate to reach out.
+For questions or feedback, open an issue at [github.com/poviolabs/Lingua](https://github.com/povio/Lingua).

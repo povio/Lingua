@@ -20,6 +20,8 @@ GOOGLE_SPREADSHEET_ID=your_spreadsheet_id
 
 Make sure to replace `your_api_key` and `your_spreadsheet_id` with your actual Google API key and Google Spreadsheet ID respectively.
 
+> **Important:** Add `.env` to your `.gitignore` to avoid committing credentials to the repository.
+
 ## Running the Script
 
 Post environment configuration, navigate to the `scripts` directory and execute the following command to import new translations:
@@ -31,3 +33,5 @@ Post environment configuration, navigate to the `scripts` directory and execute 
 Remember to run this script each time you want to import new translations.
 
 This demonstration aids in understanding the process of integrating Lingua into your iOS projects.
+
+For more details on local and CI/CD usage, see the [Best Usage Practices guide](../../../Resources/Docs/App/BEST_USAGE_PRACTICES.md).

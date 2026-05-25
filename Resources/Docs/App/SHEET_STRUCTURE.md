@@ -28,7 +28,7 @@ A brief description to help understand the context and usage of the localization
 
 ### Value columns
 
-These columns store the translation values for different plural cases, following the [Unicode CLDR language plural rules](https://www.unicode.org/cldr/charts/42/supplemental/language_plural_rules.html). Below are the specific columns:
+These columns store the translation values for different plural cases, following the [Unicode CLDR language plural rules](https://www.unicode.org/cldr/charts/latest/supplemental/language_plural_rules.html). Below are the specific columns:
 
 - **Value Zero**: Translation for zero quantity (if applicable)
 - **Value One**: Translation for singular quantity
@@ -91,3 +91,7 @@ Here are the common iOS format specifiers used:
   - **Exported German (Android)**: `Willkommen, %1$s!`
 
 In these examples, `%@` is used as a placeholder for the name of the user, a string value. During the export process, the iOS format specifier will remain the same for iOS and will be replaced with the appropriate Android placeholder.
+
+On Android, the `1$` in `%1$s` is a positional index indicating which argument to use (1-based). For strings with multiple placeholders, each gets its own index: `%1$s`, `%2$s`, etc. This allows Android to reorder arguments in translations where word order differs between languages.
+
+> **Plural columns:** Not all plural form columns need to be filled for every language. Only the forms applicable to a given language are required. For example, English only uses `one` and `other`; you can leave `zero`, `two`, `few`, and `many` blank for English entries.

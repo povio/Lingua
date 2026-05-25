@@ -41,7 +41,7 @@ In order to setup Google sheet, we need to complete two steps. First one is to c
 
 ### a. Sheet Document
 
-We have prepared a tamplate for sheet structure for you. What you have to do is to open the link below and make a copy `File > Make a copy`
+We have prepared a template for sheet structure for you. What you have to do is to open the link below and make a copy `File > Make a copy`
 
 [Mobile Localizations Template - Google Sheets](https://docs.google.com/spreadsheets/d/1Cnqy4gZqh9pGcTF_0jb8QGOnysejZ8dVfSj8dgX4kzM)
 
@@ -51,7 +51,7 @@ We have prepared a tamplate for sheet structure for you. What you have to do is 
 
 ### b. Obtain the sheet id
 
-The sheet id can easly be accessed from the url after you have create a copy of the document tamplate.
+The sheet id can easily be accessed from the url after you have created a copy of the document template.
 
 `https://docs.google.com/spreadsheets/d/` ***`1GpaPpO4JMleZPd8paSW4qPBQxjImm2xD8yJhvZOP-8w`***
 
@@ -71,7 +71,7 @@ Here are the steps to enable the Google Sheets API and create an API key:
 
 6. Click on "ENABLE" to enable the Google Sheets API for your project.
 
-7. After the API is enabled, go back to the "APIs & Services" > "Credendtials" page.
+7. After the API is enabled, go back to the "APIs & Services" > "Credentials" page.
 
 8. Click on "CREATE CREDENTIALS" at the top of the page.
 

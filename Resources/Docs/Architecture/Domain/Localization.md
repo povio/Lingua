@@ -35,4 +35,4 @@
 
 **Diagram**:
 
-<img title="" src="./Images/localization_domain_diagram.png" alt="" data-align="center">
+<img title="" src="./Images/localization_domain_diagram.png" alt="Localization Domain Diagram" data-align="center">
