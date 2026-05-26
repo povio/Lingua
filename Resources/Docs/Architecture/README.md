@@ -68,9 +68,12 @@ Read more:
 
 The LocalizationModule is primarily designed to be used via the command line interface. To run it, use the following command:
 
-`Lingua <platform> <config_file_path/file.json>`
+```shell
+lingua ios /path/to/lingua_config.json
+lingua android /path/to/lingua_config.json
+```
 
-Where `<platorm>` can be `ios` or `android`.
+For AI agent-driven workflows, additional subcommands are available (`lingua sections`, `lingua find`, `lingua add`, `lingua update`, `lingua sync`, `lingua doctor`, etc.). See the [AI Agent Integration](../App/AI_AGENT_INTEGRATION.md) and [AI Agent Usage](../App/AI_AGENT_USAGE.md) guides for details.
 
 ### LocalizationProcessor
 
@@ -104,4 +107,4 @@ The LocalizationModule is designed with extensibility in mind, allowing you to s
 
 ## Diagram
 
-<img title="" src="../../Images/lingua_diagram.png" alt="" data-align="center">
+<img title="" src="../../Images/lingua_diagram.png" alt="Lingua Architecture Diagram" data-align="center">

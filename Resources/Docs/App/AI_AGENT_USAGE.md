@@ -110,7 +110,7 @@ Reading the sheet only needs an API key. Writing to it (which is what `lingua ad
 }
 ```
 
-`serviceAccountKeyPath` and `defaultWriteSheet` are both optional. Read commands keep working without them. `defaultWriteSheet` is the **canonical** tab whose row order Lingua uses when picking where to insert new rows; when omitted, Lingua picks the first English-prefixed tab.
+`serviceAccountKeyPath` and `defaultWriteSheet` are both optional. Read commands keep working without them. `defaultWriteSheet` is the **canonical** tab whose row order Lingua uses when picking where to insert new rows; when omitted, Lingua picks the first tab whose language code starts with `en`. If no such tab exists, it falls back to the first tab in the sheet. It is recommended to set this explicitly to avoid ambiguity.
 
 Verify everything is wired up:
 
@@ -171,10 +171,12 @@ Errors the agent must handle:
 
 | Code | Meaning |
 |---|---|
-| `duplicate_key` | A row already exists for `(section, key)`. The agent should reuse it. |
+| `duplicate_key` | A row already exists for `(section, key)`. The agent should reuse the existing key instead. |
 | `unknown_section` | The section doesn't exist. `error.details.suggestions` lists the 3 closest matches. The agent must ask the user before passing `--new-section`. |
-| `tabs_out_of_sync` | Language tabs have different `(section, key)` rows. Run `lingua doctor`. |
-| `missing_service_account` | `serviceAccountKeyPath` not configured. |
+| `tabs_out_of_sync` | Language tabs have different `(section, key)` rows. Run `lingua doctor` to identify which tabs are misaligned, then use `lingua delete` to remove any orphan rows before re-adding with values for all languages. |
+| `missing_service_account` | `serviceAccountKeyPath` not configured. Add the path to your `lingua_config.json` and verify with `lingua doctor`. |
+
+Pass `--dry-run` to validate the insertion (section resolution, duplicate check, alignment check) without writing anything to the sheet. The response payload will include `"dryRun": true` and the resolved `rowIndex` so you can confirm placement before committing.
 
 Success payload:
 

@@ -236,13 +236,15 @@ Sources/LinguaLib/Infrastructure/Data/GoogleSheets/
 `updateRow` (deterministic `values.update`),
 `appendRow` (legacy `:append`, kept for completeness but not used by the section-aware path),
 `updateCell`, and
-`deleteRow`. Tab names are looked up to numeric `gid` once per process and cached.
+`deleteRow`. Tab names are looked up to numeric `gid` once per process and cached in memory for the lifetime of that process invocation.
 
 Auth: build an RS256-signed JWT from the service account JSON, exchange it at
 `https://oauth2.googleapis.com/token` for a short-lived access token, cache it in memory until
-just before expiry. RSA signing uses the macOS Security framework directly (no external crypto
-dependency) — `RSAPrivateKey` parses the PKCS#8 PEM, strips the AlgorithmIdentifier wrapper to
-PKCS#1 form, and calls `SecKeyCreateSignature` with `.rsaSignatureMessagePKCS1v15SHA256`.
+just before expiry (process-scoped; a new process fetches a fresh token). RSA signing uses the
+macOS Security framework on Apple platforms — `RSAPrivateKey` parses the PKCS#8 PEM, strips the
+AlgorithmIdentifier wrapper to PKCS#1 form, and calls `SecKeyCreateSignature` with
+`.rsaSignatureMessagePKCS1v15SHA256`. On Linux, the same signing step uses a platform-appropriate
+implementation (Security.framework is not available outside Apple platforms).
 
 ### Domain layer additions
 
