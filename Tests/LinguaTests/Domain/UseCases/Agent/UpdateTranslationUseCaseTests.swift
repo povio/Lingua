@@ -290,6 +290,57 @@ final class UpdateTranslationUseCaseTests: XCTestCase {
     }
   }
 
+  func test_update_writesToMatchingKeyRow_whenTabsHaveDifferentBlankRows() async throws {
+    let sheets = sheetsWithDifferentBlankRows()
+    let writer = SpyWriter()
+    let sut = UpdateTranslationUseCase(
+      sheetDataLoader: MockSheetDataLoader(loadSheetsResult: .success(sheets)),
+      writer: writer,
+      preferredSheet: "en_US_English"
+    )
+
+    let result = try await sut.update(TranslationUpdate(
+      section: "General",
+      key: "cancel",
+      assignments: [ValueAssignment(language: "de", form: nil, text: "AbbrechenNeu")]
+    ))
+
+    XCTAssertEqual(result.rowIndex, 4) // canonical English row
+    XCTAssertEqual(writer.cellUpdates.count, 1)
+    let cell = try XCTUnwrap(writer.cellUpdates.first)
+    XCTAssertEqual(cell.tab, "de_DE_German")
+    XCTAssertEqual(cell.row, 3) // German cancel row
+    XCTAssertEqual(cell.col, 4)
+    XCTAssertEqual(cell.value, "AbbrechenNeu")
+  }
+
+  func test_updateBatch_writesToMatchingKeyRow_whenTabsHaveDifferentBlankRows() async throws {
+    let sheets = sheetsWithDifferentBlankRows()
+    let writer = SpyWriter()
+    let sut = UpdateTranslationUseCase(
+      sheetDataLoader: MockSheetDataLoader(loadSheetsResult: .success(sheets)),
+      writer: writer,
+      preferredSheet: "en_US_English"
+    )
+
+    let result = try await sut.updateBatch([
+      TranslationUpdate(
+        section: "General",
+        key: "cancel",
+        assignments: [ValueAssignment(language: "de", form: nil, text: "AbbrechenNeu")]
+      )
+    ])
+
+    XCTAssertEqual(result.items.first?.rowIndex, 4) // canonical English row
+    XCTAssertEqual(writer.batchEdits, [SheetBatchEdit(
+      sheetTab: "de_DE_German",
+      startRow: 3, // German cancel row
+      startColumn: 4,
+      rows: [["AbbrechenNeu"]],
+      mode: .writeOnly
+    )])
+  }
+
   // MARK: - Helpers
 
   private func assertAgentError(
@@ -315,6 +366,21 @@ final class UpdateTranslationUseCaseTests: XCTestCase {
         LocalizationEntry(section: e.0, key: e.1, translations: e.2, sheetRow: offset + 2)
       }
     )
+  }
+
+  private func sheetsWithDifferentBlankRows() -> [LocalizationSheet] {
+    [
+      LocalizationSheet(language: "en_US_English", entries: [
+        LocalizationEntry(section: "General", key: "save", translations: ["one": "Save"], sheetRow: 2),
+        LocalizationEntry(section: "General", key: "cancel", translations: ["one": "Cancel"], sheetRow: 4),
+        LocalizationEntry(section: "General", key: "close", translations: ["one": "Close"], sheetRow: 5)
+      ]),
+      LocalizationSheet(language: "de_DE_German", entries: [
+        LocalizationEntry(section: "General", key: "save", translations: ["one": "Speichern"], sheetRow: 2),
+        LocalizationEntry(section: "General", key: "cancel", translations: ["one": "Abbrechen"], sheetRow: 3),
+        LocalizationEntry(section: "General", key: "close", translations: ["one": "Schließen"], sheetRow: 4)
+      ])
+    ]
   }
 }
 

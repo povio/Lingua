@@ -74,8 +74,7 @@ public struct UpdateTranslationUseCase: UpdatingTranslation {
         details: ["section": update.section, "key": update.key]
       )
     }
-    // Use the entry's recorded sheet row (preserves blank separator rows) rather than the
-    // entries-array index.
+    // Report the canonical row; writes use each language tab's row.
     let rowIndex = canonical.entries[offset].sheetRow
 
     // Validate plural forms.
@@ -114,7 +113,7 @@ public struct UpdateTranslationUseCase: UpdatingTranslation {
         continue
       }
 
-      // Confirm the row exists in this tab at the same position. Misalignment → abort.
+      // Keys must have the same order, even when blank separator rows differ.
       let theseKeys = sheet.entries.map { "\($0.section)::\($0.key)" }
       let canonicalKeys = canonical.entries.map { "\($0.section)::\($0.key)" }
       guard theseKeys == canonicalKeys else {
@@ -130,7 +129,7 @@ public struct UpdateTranslationUseCase: UpdatingTranslation {
         guard let column = PluralColumnLayout.column(forForm: form) else { continue }
         try await writer.updateCell(
           sheetTab: sheet.language,
-          oneBasedRow: rowIndex,
+          oneBasedRow: sheet.entries[offset].sheetRow,
           oneBasedColumn: column,
           value: a.text
         )
@@ -158,8 +157,7 @@ public struct UpdateTranslationUseCase: UpdatingTranslation {
       throw AgentError(code: "no_sheets", message: "No language sheets found in the spreadsheet.")
     }
 
-    // One alignment check up front (vs once per item) — every cell write below assumes the
-    // canonical row position matches every other tab's row position.
+    // Check key order once. Blank separator rows can differ between tabs.
     let canonicalKeys = canonical.entries.map { "\($0.section)::\($0.key)" }
     for sheet in sheets where sheet.language != canonical.language {
       let theseKeys = sheet.entries.map { "\($0.section)::\($0.key)" }
@@ -194,6 +192,7 @@ public struct UpdateTranslationUseCase: UpdatingTranslation {
         notFound.append(NotFoundEntry(section: update.section, key: update.key))
         continue
       }
+      // Report the canonical row; writes use each language tab's row.
       let rowIndex = canonical.entries[offset].sheetRow
       let existingForms = canonical.entries[offset].translations.filter { !$0.value.isEmpty }.map { $0.key }
       let defaultForm: String = {
@@ -212,7 +211,7 @@ public struct UpdateTranslationUseCase: UpdatingTranslation {
           guard let column = PluralColumnLayout.column(forForm: form) else { continue }
           edits.append(SheetBatchEdit(
             sheetTab: sheet.language,
-            startRow: rowIndex,
+            startRow: sheet.entries[offset].sheetRow,
             startColumn: column,
             rows: [[a.text]],
             mode: .writeOnly
