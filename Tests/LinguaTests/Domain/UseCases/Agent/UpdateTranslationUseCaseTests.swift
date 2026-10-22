@@ -115,7 +115,7 @@ final class UpdateTranslationUseCaseTests: XCTestCase {
     }
   }
 
-  func test_update_throwsTabsOutOfSync_whenLanguageTabRowsMisaligned() async {
+  func test_update_doesNotWrite_whenLaterTabMisaligned() async {
     let sheets = [
       sheet(language: "en_US_English", entries: [
         ("welcome", "title", ["one": "Hi"]),
@@ -126,17 +126,27 @@ final class UpdateTranslationUseCaseTests: XCTestCase {
         // missing 'subtitle' → misaligned
       ])
     ]
-    let sut = UpdateTranslationUseCase(
-      sheetDataLoader: MockSheetDataLoader(loadSheetsResult: .success(sheets)),
-      writer: SpyWriter(),
-      preferredSheet: "en_US_English"
-    )
-    await assertAgentError(code: "tabs_out_of_sync") {
-      _ = try await sut.update(TranslationUpdate(
-        section: "welcome",
-        key: "title",
-        assignments: [ValueAssignment(language: "de", form: nil, text: "x")]
-      ))
+    for assignments in [
+      [
+        ValueAssignment(language: "en", form: nil, text: "Updated"),
+        ValueAssignment(language: "de", form: nil, text: "Aktualisiert")
+      ],
+      [ValueAssignment(language: "en", form: nil, text: "Updated")]
+    ] {
+      let writer = SpyWriter()
+      let sut = UpdateTranslationUseCase(
+        sheetDataLoader: MockSheetDataLoader(loadSheetsResult: .success(sheets)),
+        writer: writer,
+        preferredSheet: "en_US_English"
+      )
+      await assertAgentError(code: "tabs_out_of_sync") {
+        _ = try await sut.update(TranslationUpdate(
+          section: "welcome",
+          key: "title",
+          assignments: assignments
+        ))
+      }
+      XCTAssertTrue(writer.cellUpdates.isEmpty)
     }
   }
 
@@ -290,6 +300,111 @@ final class UpdateTranslationUseCaseTests: XCTestCase {
     }
   }
 
+  func test_update_writesToMatchingKeyRow_whenTabsHaveDifferentBlankRows() async throws {
+    let sheets = sheetsWithDifferentBlankRows()
+    let writer = SpyWriter()
+    let sut = UpdateTranslationUseCase(
+      sheetDataLoader: MockSheetDataLoader(loadSheetsResult: .success(sheets)),
+      writer: writer,
+      preferredSheet: "en_US_English"
+    )
+
+    let result = try await sut.update(TranslationUpdate(
+      section: "General",
+      key: "cancel",
+      assignments: [
+        ValueAssignment(language: "en", form: nil, text: "CancelUpdated"),
+        ValueAssignment(language: "de", form: nil, text: "AbbrechenNeu")
+      ]
+    ))
+
+    XCTAssertEqual(result.rowIndex, 4) // canonical English row
+    XCTAssertEqual(writer.cellUpdates.map(\.tab), ["en_US_English", "de_DE_German"])
+    XCTAssertEqual(writer.cellUpdates.map(\.row), [4, 3])
+    XCTAssertEqual(writer.cellUpdates.map(\.col), [4, 4])
+    XCTAssertEqual(writer.cellUpdates.map(\.value), ["CancelUpdated", "AbbrechenNeu"])
+
+    let json = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(result)) as? [String: Any])
+    XCTAssertEqual(json["cellsUpdated"] as? [[String: AnyHashable]], [
+      ["tab": "en_US_English", "row": 4, "column": "D", "form": "one"],
+      ["tab": "de_DE_German", "row": 3, "column": "D", "form": "one"]
+    ])
+  }
+
+  func test_updateBatch_writesToMatchingKeyRow_whenTabsHaveDifferentBlankRows() async throws {
+    let sheets = sheetsWithDifferentBlankRows()
+    let writer = SpyWriter()
+    let sut = UpdateTranslationUseCase(
+      sheetDataLoader: MockSheetDataLoader(loadSheetsResult: .success(sheets)),
+      writer: writer,
+      preferredSheet: "en_US_English"
+    )
+
+    let result = try await sut.updateBatch([
+      TranslationUpdate(
+        section: "General",
+        key: "save",
+        assignments: [
+          ValueAssignment(language: "en", form: nil, text: "SaveUpdated"),
+          ValueAssignment(language: "de", form: nil, text: "SpeichernNeu")
+        ]
+      ),
+      TranslationUpdate(
+        section: "General",
+        key: "cancel",
+        assignments: [
+          ValueAssignment(language: "en", form: nil, text: "CancelUpdated"),
+          ValueAssignment(language: "de", form: nil, text: "AbbrechenNeu")
+        ]
+      )
+    ])
+
+    XCTAssertEqual(result.items.map(\.key), ["save", "cancel"])
+    XCTAssertEqual(result.items.map(\.rowIndex), [2, 4]) // canonical English rows
+    XCTAssertEqual(writer.batchEdits, [
+      SheetBatchEdit(
+        sheetTab: "en_US_English",
+        startRow: 2,
+        startColumn: 4,
+        rows: [["SaveUpdated"]],
+        mode: .writeOnly
+      ),
+      SheetBatchEdit(
+        sheetTab: "de_DE_German",
+        startRow: 2,
+        startColumn: 4,
+        rows: [["SpeichernNeu"]],
+        mode: .writeOnly
+      ),
+      SheetBatchEdit(
+        sheetTab: "en_US_English",
+        startRow: 4,
+        startColumn: 4,
+        rows: [["CancelUpdated"]],
+        mode: .writeOnly
+      ),
+      SheetBatchEdit(
+        sheetTab: "de_DE_German",
+        startRow: 3,
+        startColumn: 4,
+        rows: [["AbbrechenNeu"]],
+        mode: .writeOnly
+      )
+    ])
+
+    let json = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(result)) as? [String: Any])
+    let items = try XCTUnwrap(json["items"] as? [[String: Any]])
+    XCTAssertEqual(items.count, 2)
+    XCTAssertEqual(items.first?["cellsUpdated"] as? [[String: AnyHashable]], [
+      ["tab": "en_US_English", "row": 2, "column": "D", "form": "one"],
+      ["tab": "de_DE_German", "row": 2, "column": "D", "form": "one"]
+    ])
+    XCTAssertEqual(items.last?["cellsUpdated"] as? [[String: AnyHashable]], [
+      ["tab": "en_US_English", "row": 4, "column": "D", "form": "one"],
+      ["tab": "de_DE_German", "row": 3, "column": "D", "form": "one"]
+    ])
+  }
+
   // MARK: - Helpers
 
   private func assertAgentError(
@@ -315,6 +430,21 @@ final class UpdateTranslationUseCaseTests: XCTestCase {
         LocalizationEntry(section: e.0, key: e.1, translations: e.2, sheetRow: offset + 2)
       }
     )
+  }
+
+  private func sheetsWithDifferentBlankRows() -> [LocalizationSheet] {
+    [
+      LocalizationSheet(language: "en_US_English", entries: [
+        LocalizationEntry(section: "General", key: "save", translations: ["one": "Save"], sheetRow: 2),
+        LocalizationEntry(section: "General", key: "cancel", translations: ["one": "Cancel"], sheetRow: 4),
+        LocalizationEntry(section: "General", key: "close", translations: ["one": "Close"], sheetRow: 5)
+      ]),
+      LocalizationSheet(language: "de_DE_German", entries: [
+        LocalizationEntry(section: "General", key: "save", translations: ["one": "Speichern"], sheetRow: 2),
+        LocalizationEntry(section: "General", key: "cancel", translations: ["one": "Abbrechen"], sheetRow: 3),
+        LocalizationEntry(section: "General", key: "close", translations: ["one": "Schließen"], sheetRow: 4)
+      ])
+    ]
   }
 }
 

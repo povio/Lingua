@@ -23,6 +23,7 @@ public struct UpdatedTranslation: Encodable {
 
 public struct UpdatedCell: Encodable {
   public let tab: String
+  public let row: Int         // 1-based row in this tab
   public let column: String   // letter, e.g. "D"
   public let form: String     // resolved plural form
 }
@@ -74,8 +75,7 @@ public struct UpdateTranslationUseCase: UpdatingTranslation {
         details: ["section": update.section, "key": update.key]
       )
     }
-    // Use the entry's recorded sheet row (preserves blank separator rows) rather than the
-    // entries-array index.
+    // Report the canonical row; writes use each language tab's row.
     let rowIndex = canonical.entries[offset].sheetRow
 
     // Validate plural forms.
@@ -102,6 +102,19 @@ public struct UpdateTranslationUseCase: UpdatingTranslation {
       return PluralColumnLayout.detectDefaultForm(in: canonical.entries)
     }()
 
+    // Check every tab before writing. Blank separator rows can differ.
+    let canonicalKeys = canonical.entries.map { "\($0.section)::\($0.key)" }
+    for sheet in sheets where sheet.language != canonical.language {
+      let theseKeys = sheet.entries.map { "\($0.section)::\($0.key)" }
+      guard theseKeys == canonicalKeys else {
+        throw AgentError(
+          code: "tabs_out_of_sync",
+          message: "Language tab '\(sheet.language)' is not aligned with canonical tab '\(canonical.language)'.",
+          details: ["misalignedTab": sheet.language]
+        )
+      }
+    }
+
     // Group assignments by language.
     let assignmentsByLang = Dictionary(grouping: update.assignments, by: \.language)
 
@@ -114,28 +127,18 @@ public struct UpdateTranslationUseCase: UpdatingTranslation {
         continue
       }
 
-      // Confirm the row exists in this tab at the same position. Misalignment → abort.
-      let theseKeys = sheet.entries.map { "\($0.section)::\($0.key)" }
-      let canonicalKeys = canonical.entries.map { "\($0.section)::\($0.key)" }
-      guard theseKeys == canonicalKeys else {
-        throw AgentError(
-          code: "tabs_out_of_sync",
-          message: "Language tab '\(sheet.language)' is not aligned with canonical tab '\(canonical.language)'.",
-          details: ["misalignedTab": sheet.language]
-        )
-      }
-
       for a in assignments {
         let form = a.form ?? defaultForm
         guard let column = PluralColumnLayout.column(forForm: form) else { continue }
         try await writer.updateCell(
           sheetTab: sheet.language,
-          oneBasedRow: rowIndex,
+          oneBasedRow: sheet.entries[offset].sheetRow,
           oneBasedColumn: column,
           value: a.text
         )
         cellsUpdated.append(UpdatedCell(
           tab: sheet.language,
+          row: sheet.entries[offset].sheetRow,
           column: GoogleSheetsWriter.columnLetters(forIndex: column),
           form: form
         ))
@@ -158,8 +161,7 @@ public struct UpdateTranslationUseCase: UpdatingTranslation {
       throw AgentError(code: "no_sheets", message: "No language sheets found in the spreadsheet.")
     }
 
-    // One alignment check up front (vs once per item) — every cell write below assumes the
-    // canonical row position matches every other tab's row position.
+    // Check key order once. Blank separator rows can differ between tabs.
     let canonicalKeys = canonical.entries.map { "\($0.section)::\($0.key)" }
     for sheet in sheets where sheet.language != canonical.language {
       let theseKeys = sheet.entries.map { "\($0.section)::\($0.key)" }
@@ -194,6 +196,7 @@ public struct UpdateTranslationUseCase: UpdatingTranslation {
         notFound.append(NotFoundEntry(section: update.section, key: update.key))
         continue
       }
+      // Report the canonical row; writes use each language tab's row.
       let rowIndex = canonical.entries[offset].sheetRow
       let existingForms = canonical.entries[offset].translations.filter { !$0.value.isEmpty }.map { $0.key }
       let defaultForm: String = {
@@ -212,13 +215,14 @@ public struct UpdateTranslationUseCase: UpdatingTranslation {
           guard let column = PluralColumnLayout.column(forForm: form) else { continue }
           edits.append(SheetBatchEdit(
             sheetTab: sheet.language,
-            startRow: rowIndex,
+            startRow: sheet.entries[offset].sheetRow,
             startColumn: column,
             rows: [[a.text]],
             mode: .writeOnly
           ))
           cells.append(UpdatedCell(
             tab: sheet.language,
+            row: sheet.entries[offset].sheetRow,
             column: GoogleSheetsWriter.columnLetters(forIndex: column),
             form: form
           ))
