@@ -102,6 +102,19 @@ public struct UpdateTranslationUseCase: UpdatingTranslation {
       return PluralColumnLayout.detectDefaultForm(in: canonical.entries)
     }()
 
+    // Check every tab before writing. Blank separator rows can differ.
+    let canonicalKeys = canonical.entries.map { "\($0.section)::\($0.key)" }
+    for sheet in sheets where sheet.language != canonical.language {
+      let theseKeys = sheet.entries.map { "\($0.section)::\($0.key)" }
+      guard theseKeys == canonicalKeys else {
+        throw AgentError(
+          code: "tabs_out_of_sync",
+          message: "Language tab '\(sheet.language)' is not aligned with canonical tab '\(canonical.language)'.",
+          details: ["misalignedTab": sheet.language]
+        )
+      }
+    }
+
     // Group assignments by language.
     let assignmentsByLang = Dictionary(grouping: update.assignments, by: \.language)
 
@@ -112,17 +125,6 @@ public struct UpdateTranslationUseCase: UpdatingTranslation {
       guard let assignments = assignmentsByLang[sheet.languageCode] else {
         languagesSkipped.append(sheet.language)
         continue
-      }
-
-      // Keys must have the same order, even when blank separator rows differ.
-      let theseKeys = sheet.entries.map { "\($0.section)::\($0.key)" }
-      let canonicalKeys = canonical.entries.map { "\($0.section)::\($0.key)" }
-      guard theseKeys == canonicalKeys else {
-        throw AgentError(
-          code: "tabs_out_of_sync",
-          message: "Language tab '\(sheet.language)' is not aligned with canonical tab '\(canonical.language)'.",
-          details: ["misalignedTab": sheet.language]
-        )
       }
 
       for a in assignments {

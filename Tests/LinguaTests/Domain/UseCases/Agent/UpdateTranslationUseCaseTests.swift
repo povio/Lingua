@@ -115,7 +115,7 @@ final class UpdateTranslationUseCaseTests: XCTestCase {
     }
   }
 
-  func test_update_throwsTabsOutOfSync_whenLanguageTabRowsMisaligned() async {
+  func test_update_doesNotWrite_whenLaterTabMisaligned() async {
     let sheets = [
       sheet(language: "en_US_English", entries: [
         ("welcome", "title", ["one": "Hi"]),
@@ -126,17 +126,27 @@ final class UpdateTranslationUseCaseTests: XCTestCase {
         // missing 'subtitle' → misaligned
       ])
     ]
-    let sut = UpdateTranslationUseCase(
-      sheetDataLoader: MockSheetDataLoader(loadSheetsResult: .success(sheets)),
-      writer: SpyWriter(),
-      preferredSheet: "en_US_English"
-    )
-    await assertAgentError(code: "tabs_out_of_sync") {
-      _ = try await sut.update(TranslationUpdate(
-        section: "welcome",
-        key: "title",
-        assignments: [ValueAssignment(language: "de", form: nil, text: "x")]
-      ))
+    for assignments in [
+      [
+        ValueAssignment(language: "en", form: nil, text: "Updated"),
+        ValueAssignment(language: "de", form: nil, text: "Aktualisiert")
+      ],
+      [ValueAssignment(language: "en", form: nil, text: "Updated")]
+    ] {
+      let writer = SpyWriter()
+      let sut = UpdateTranslationUseCase(
+        sheetDataLoader: MockSheetDataLoader(loadSheetsResult: .success(sheets)),
+        writer: writer,
+        preferredSheet: "en_US_English"
+      )
+      await assertAgentError(code: "tabs_out_of_sync") {
+        _ = try await sut.update(TranslationUpdate(
+          section: "welcome",
+          key: "title",
+          assignments: assignments
+        ))
+      }
+      XCTAssertTrue(writer.cellUpdates.isEmpty)
     }
   }
 
