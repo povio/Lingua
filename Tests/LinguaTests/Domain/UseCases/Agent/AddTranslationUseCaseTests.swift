@@ -187,6 +187,77 @@ final class AddTranslationUseCaseTests: XCTestCase {
     XCTAssertEqual(writer.inserts[0].row, 6)
   }
 
+  func test_add_existingSection_insertsAtEachTabsOwnRow_whenTabsHaveDifferentBlankRows() async throws {
+    // German has a blank row the English tab doesn't, so Login/title sits one row lower.
+    let sheets = [
+      sheetWithRows(language: "en_US_English", entries: [
+        ("General", "save", "one", 2),
+        ("Login", "title", "one", 3)
+      ]),
+      sheetWithRows(language: "de_DE_German", entries: [
+        ("General", "save", "one", 2),
+        ("Login", "title", "one", 4)
+      ])
+    ]
+    let writer = SpyWriter()
+    let sut = AddTranslationUseCase(
+      sheetDataLoader: MockSheetDataLoader(loadSheetsResult: .success(sheets)),
+      writer: writer,
+      preferredSheet: "en_US_English"
+    )
+
+    let result = try await sut.add(NewTranslation(
+      section: "Login",
+      key: "subtitle",
+      assignments: [
+        ValueAssignment(language: "en", form: nil, text: "Sign in to continue"),
+        ValueAssignment(language: "de", form: nil, text: "Melde dich an")
+      ],
+      allowNewSection: false,
+      dryRun: false
+    ))
+
+    XCTAssertEqual(result.rowIndex, 4) // canonical English row
+    XCTAssertEqual(writer.inserts.map(\.tab), ["en_US_English", "de_DE_German"])
+    XCTAssertEqual(writer.inserts.map(\.row), [4, 5]) // right below each tab's Login/title
+  }
+
+  func test_add_newSection_writesAtEachTabsOwnRow_whenTabsHaveDifferentBlankRows() async throws {
+    // German has two blank rows the English tab doesn't. Writing at the English row (5) would
+    // overwrite German's General/close.
+    let sheets = [
+      sheetWithRows(language: "en_US_English", entries: [
+        ("General", "save", "one", 2),
+        ("General", "close", "one", 3)
+      ]),
+      sheetWithRows(language: "de_DE_German", entries: [
+        ("General", "save", "one", 2),
+        ("General", "close", "one", 5)
+      ])
+    ]
+    let writer = SpyWriter()
+    let sut = AddTranslationUseCase(
+      sheetDataLoader: MockSheetDataLoader(loadSheetsResult: .success(sheets)),
+      writer: writer,
+      preferredSheet: "en_US_English"
+    )
+
+    let result = try await sut.add(NewTranslation(
+      section: "Login",
+      key: "title",
+      assignments: [
+        ValueAssignment(language: "en", form: nil, text: "Login"),
+        ValueAssignment(language: "de", form: nil, text: "Anmelden")
+      ],
+      allowNewSection: true,
+      dryRun: false
+    ))
+
+    XCTAssertEqual(result.rowIndex, 5) // canonical English row
+    XCTAssertEqual(writer.updateRows.map(\.tab), ["en_US_English", "de_DE_German"])
+    XCTAssertEqual(writer.updateRows.map(\.row), [5, 7]) // each tab's last row + 2
+  }
+
   // MARK: - Plural form handling (new in this round)
 
   func test_add_explicitPluralForms_writesEachFormToCorrectColumn() async throws {
