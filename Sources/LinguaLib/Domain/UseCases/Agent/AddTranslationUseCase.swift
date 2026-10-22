@@ -103,37 +103,18 @@ public struct AddTranslationUseCase: AddingTranslation {
       )
     }
 
-    // Resolve insertion point. We use the entries' actual sheet rows (which preserve blank
-    // separator rows) instead of computing from the entries-array index, so the math stays
-    // correct even when sections are visually separated by blank rows.
     let sectionExists = canonical.entries.contains(where: { $0.section == translation.section })
-    var createdNewSection = false
-    let insertionRow: Int
-
-    if sectionExists {
-      let lastEntryInSection = canonical.entries.last { $0.section == translation.section }!
-      insertionRow = lastEntryInSection.sheetRow + 1
-    } else {
-      guard translation.allowNewSection else {
-        let suggestions = Self.closestSections(to: translation.section, in: canonical.entries, limit: 3)
-        throw AgentError(
-          code: "unknown_section",
-          message: "Section '\(translation.section)' does not exist. Pass --new-section to create it. Closest matches: \(suggestions.joined(separator: ", "))",
-          details: ["suggestions": suggestions.joined(separator: ",")]
-        )
-      }
-      // Append at the bottom of the sheet, leaving exactly one blank separator row above the
-      // new section if the sheet already has any data. The blank row makes the sheet far more
-      // readable for humans browsing it, and because every other use case looks up rows by
-      // `entry.sheetRow` rather than by entries-array index, future adds/updates/deletes to
-      // this new section continue to target the correct row.
-      if let lastOverall = canonical.entries.last {
-        insertionRow = lastOverall.sheetRow + 2
-      } else {
-        insertionRow = 2 // empty sheet — first data row right after the header
-      }
-      createdNewSection = true
+    if !sectionExists && !translation.allowNewSection {
+      let suggestions = Self.closestSections(to: translation.section, in: canonical.entries, limit: 3)
+      throw AgentError(
+        code: "unknown_section",
+        message: "Section '\(translation.section)' does not exist. Pass --new-section to create it. Closest matches: \(suggestions.joined(separator: ", "))",
+        details: ["suggestions": suggestions.joined(separator: ",")]
+      )
     }
+    let createdNewSection = !sectionExists
+    // Report the canonical row; writes use each language tab's row.
+    let insertionRow = Self.insertionRow(forSection: translation.section, in: canonical.entries)
 
     // Validate plural forms before doing any I/O.
     let defaultForm = PluralColumnLayout.detectDefaultForm(in: canonical.entries)
@@ -173,13 +154,15 @@ public struct AddTranslationUseCase: AddingTranslation {
       )
     }
 
-    // Write the same row position to every language tab so the sheets stay aligned, even when
-    // a particular language wasn't supplied (those cells stay blank).
+    // Write the row to every language tab so the sheets stay aligned, even when a particular
+    // language wasn't supplied (those cells stay blank). Each tab resolves its own row because
+    // blank separator rows can differ between tabs.
     //
     // For brand-new sections we use `updateRow` (deterministic `values.update` at a known row
     // index) instead of Google's flaky `:append` endpoint, which previously caused some tabs
     // to silently drop the row.
     for sheet in sheets {
+      let row = Self.insertionRow(forSection: translation.section, in: sheet.entries)
       let cells = Self.buildRowCells(
         section: translation.section,
         key: translation.key,
@@ -187,9 +170,9 @@ public struct AddTranslationUseCase: AddingTranslation {
         defaultForm: defaultForm
       )
       if createdNewSection {
-        try await writer.updateRow(sheetTab: sheet.language, oneBasedRowIndex: insertionRow, cells: cells)
+        try await writer.updateRow(sheetTab: sheet.language, oneBasedRowIndex: row, cells: cells)
       } else {
-        try await writer.insertRow(sheetTab: sheet.language, oneBasedRowIndex: insertionRow, cells: cells)
+        try await writer.insertRow(sheetTab: sheet.language, oneBasedRowIndex: row, cells: cells)
       }
     }
 
@@ -206,6 +189,26 @@ public struct AddTranslationUseCase: AddingTranslation {
   }
 
   // MARK: - Helpers
+
+  /// Row where a new key in `section` goes, resolved from one tab's entries. Uses the entries'
+  /// actual sheet rows (which preserve blank separator rows) instead of the entries-array index,
+  /// so the math stays correct even when sections are visually separated by blank rows. Tabs
+  /// list the same keys in the same order, but their blank rows can differ, so every tab
+  /// resolves its own row.
+  static func insertionRow(forSection section: String, in entries: [LocalizationEntry]) -> Int {
+    if let lastEntryInSection = entries.last(where: { $0.section == section }) {
+      return lastEntryInSection.sheetRow + 1
+    }
+    // New section: append at the bottom of the sheet, leaving exactly one blank separator row
+    // above it if the sheet already has any data. The blank row makes the sheet far more
+    // readable for humans browsing it, and because every other use case looks up rows by
+    // `entry.sheetRow` rather than by entries-array index, future adds/updates/deletes to
+    // this new section continue to target the correct row.
+    if let lastOverall = entries.last {
+      return lastOverall.sheetRow + 2
+    }
+    return 2 // empty sheet — first data row right after the header
+  }
 
   /// Builds an 8-cell row by placing each assignment into the column indicated by its plural
   /// form. Assignments with `form == nil` use `defaultForm`. Multiple assignments for the same
@@ -302,58 +305,57 @@ extension AddTranslationUseCase {
 
     struct SectionPlan {
       let section: String
-      let firstRow: Int
       let isNew: Bool
       let items: [NewTranslationBatchItem]
     }
 
     var plans: [SectionPlan] = []
-    // Tracks the last row "used" by planning so far. New sections appended at the bottom
-    // advance this cursor by (their item count) — each new section also reserves one blank
-    // separator row above itself, baked into the `+2` offset below.
-    var newSectionCursor = canonical.entries.last?.sheetRow ?? 1
-
     for section in sectionOrder {
       guard let sectionItems = itemsBySection[section] else { continue }
-      if existingSections.contains(section) {
-        let lastInSection = canonical.entries.last { $0.section == section }!
-        plans.append(SectionPlan(
-          section: section,
-          firstRow: lastInSection.sheetRow + 1,
-          isNew: false,
-          items: sectionItems
-        ))
-      } else {
-        guard batch.allowNewSections else {
-          let suggestions = Self.closestSections(to: section, in: canonical.entries, limit: 3)
-          throw AgentError(
-            code: "unknown_section",
-            message: "Section '\(section)' does not exist. Pass --new-section to create it. Closest matches: \(suggestions.joined(separator: ", "))",
-            details: ["suggestions": suggestions.joined(separator: ",")]
-          )
-        }
-        let firstRow = newSectionCursor + 2
-        plans.append(SectionPlan(
-          section: section,
-          firstRow: firstRow,
-          isNew: true,
-          items: sectionItems
-        ))
-        newSectionCursor = firstRow + sectionItems.count - 1
+      let isNew = !existingSections.contains(section)
+      if isNew && !batch.allowNewSections {
+        let suggestions = Self.closestSections(to: section, in: canonical.entries, limit: 3)
+        throw AgentError(
+          code: "unknown_section",
+          message: "Section '\(section)' does not exist. Pass --new-section to create it. Closest matches: \(suggestions.joined(separator: ", "))",
+          details: ["suggestions": suggestions.joined(separator: ",")]
+        )
       }
+      plans.append(SectionPlan(section: section, isNew: isNew, items: sectionItems))
     }
 
-    // Build the per-tab edits. Each plan produces one edit per language tab so the same row
-    // range receives the right cells in every language sheet — keeping the tabs aligned.
+    // First row of each plan, resolved from one tab's entries. Tabs list the same keys in the
+    // same order, but their blank separator rows can differ, so every tab resolves its own rows.
+    func firstRows(in entries: [LocalizationEntry]) -> [Int] {
+      // Tracks the last row "used" by planning so far. New sections appended at the bottom
+      // advance this cursor by (their item count) — each new section also reserves one blank
+      // separator row above itself, baked into the `+2` offset below.
+      var newSectionCursor = entries.last?.sheetRow ?? 1
+      return plans.map { plan -> Int in
+        guard plan.isNew else {
+          return entries.last(where: { $0.section == plan.section })!.sheetRow + 1
+        }
+        let firstRow = newSectionCursor + 2
+        newSectionCursor = firstRow + plan.items.count - 1
+        return firstRow
+      }
+    }
+    // Report the canonical rows; writes use each language tab's rows.
+    let canonicalFirstRows = firstRows(in: canonical.entries)
+    let firstRowsByTab = sheets.map { firstRows(in: $0.entries) }
+
+    // Build the per-tab edits. Each plan produces one edit per language tab, at that tab's own
+    // rows, so every language sheet receives the same keys in the same order — keeping the tabs
+    // aligned.
     var edits: [SheetBatchEdit] = []
     var addedItems: [AddedBatchEntry] = []
     var createdSections: [String] = []
 
-    for plan in plans {
+    for (planIndex, plan) in plans.enumerated() {
       if plan.isNew {
         createdSections.append(plan.section)
       }
-      var nextRow = plan.firstRow
+      var nextRow = canonicalFirstRows[planIndex]
       for item in plan.items {
         addedItems.append(AddedBatchEntry(
           section: item.section,
@@ -363,7 +365,7 @@ extension AddTranslationUseCase {
         ))
         nextRow += 1
       }
-      for sheet in sheets {
+      for (sheetIndex, sheet) in sheets.enumerated() {
         let rows: [[String]] = plan.items.map { item in
           let langAssignments = item.assignments.filter { $0.language == sheet.languageCode }
           return Self.buildRowCells(
@@ -375,7 +377,7 @@ extension AddTranslationUseCase {
         }
         edits.append(SheetBatchEdit(
           sheetTab: sheet.language,
-          startRow: plan.firstRow,
+          startRow: firstRowsByTab[sheetIndex][planIndex],
           rows: rows,
           mode: plan.isNew ? .writeOnly : .insertRows
         ))

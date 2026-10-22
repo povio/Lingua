@@ -104,6 +104,50 @@ final class BatchTranslationsTests: XCTestCase {
     XCTAssertEqual(insertRows.count, 2, "one insertRows per tab for the existing section")
   }
 
+  func test_addBatch_writesAtEachTabsOwnRows_whenTabsHaveDifferentBlankRows() async throws {
+    // German has blank rows at 3 and 5 that the English tab doesn't.
+    let rows: [(String, String, en: Int, de: Int)] = [
+      ("welcome", "title", 2, 2),
+      ("welcome", "subtitle", 3, 4),
+      ("errors", "generic", 4, 6)
+    ]
+    let sheets = [
+      LocalizationSheet(language: "en_US_English", entries: rows.map {
+        LocalizationEntry(section: $0.0, key: $0.1, translations: ["one": "x"], sheetRow: $0.en)
+      }),
+      LocalizationSheet(language: "de_DE_German", entries: rows.map {
+        LocalizationEntry(section: $0.0, key: $0.1, translations: ["one": "x"], sheetRow: $0.de)
+      })
+    ]
+    let writer = SpyBatchWriter()
+    let sut = AddTranslationUseCase(
+      sheetDataLoader: MockSheetDataLoader(loadSheetsResult: .success(sheets)),
+      writer: writer,
+      preferredSheet: "en_US_English"
+    )
+
+    let result = try await sut.addBatch(AddTranslationBatch(
+      items: [
+        item(section: "welcome", key: "tagline", en: "Hi", de: "Hallo"),
+        item(section: "settings", key: "title", en: "Settings", de: "Einstellungen"),
+        item(section: "settings", key: "account", en: "Account", de: "Konto")
+      ],
+      allowNewSections: true,
+      dryRun: false
+    ))
+
+    // Reported rows come from the canonical English tab.
+    XCTAssertEqual(result.items.map(\.rowIndex), [4, 6, 7])
+    let startRows = writer.received.map { "\($0.sheetTab) \($0.mode) \($0.startRow)" }
+    XCTAssertEqual(Set(startRows), [
+      "en_US_English insertRows 4", // below welcome/subtitle (3)
+      "en_US_English writeOnly 6",  // errors/generic (4) + 2
+      "de_DE_German insertRows 5",  // below welcome/subtitle (4)
+      "de_DE_German writeOnly 8"    // errors/generic (6) + 2
+    ])
+    XCTAssertEqual(writer.received.count, 4)
+  }
+
   func test_addBatch_rejectsInBatchDuplicate() async throws {
     let sheets = makeSheets(entries: [("welcome", "title", 2)])
     let sut = AddTranslationUseCase(
