@@ -312,19 +312,21 @@ final class UpdateTranslationUseCaseTests: XCTestCase {
     let result = try await sut.update(TranslationUpdate(
       section: "General",
       key: "cancel",
-      assignments: [ValueAssignment(language: "de", form: nil, text: "AbbrechenNeu")]
+      assignments: [
+        ValueAssignment(language: "en", form: nil, text: "CancelUpdated"),
+        ValueAssignment(language: "de", form: nil, text: "AbbrechenNeu")
+      ]
     ))
 
     XCTAssertEqual(result.rowIndex, 4) // canonical English row
-    XCTAssertEqual(writer.cellUpdates.count, 1)
-    let cell = try XCTUnwrap(writer.cellUpdates.first)
-    XCTAssertEqual(cell.tab, "de_DE_German")
-    XCTAssertEqual(cell.row, 3) // German cancel row
-    XCTAssertEqual(cell.col, 4)
-    XCTAssertEqual(cell.value, "AbbrechenNeu")
+    XCTAssertEqual(writer.cellUpdates.map(\.tab), ["en_US_English", "de_DE_German"])
+    XCTAssertEqual(writer.cellUpdates.map(\.row), [4, 3])
+    XCTAssertEqual(writer.cellUpdates.map(\.col), [4, 4])
+    XCTAssertEqual(writer.cellUpdates.map(\.value), ["CancelUpdated", "AbbrechenNeu"])
 
     let json = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(result)) as? [String: Any])
     XCTAssertEqual(json["cellsUpdated"] as? [[String: AnyHashable]], [
+      ["tab": "en_US_English", "row": 4, "column": "D", "form": "one"],
       ["tab": "de_DE_German", "row": 3, "column": "D", "form": "one"]
     ])
   }
@@ -341,23 +343,64 @@ final class UpdateTranslationUseCaseTests: XCTestCase {
     let result = try await sut.updateBatch([
       TranslationUpdate(
         section: "General",
+        key: "save",
+        assignments: [
+          ValueAssignment(language: "en", form: nil, text: "SaveUpdated"),
+          ValueAssignment(language: "de", form: nil, text: "SpeichernNeu")
+        ]
+      ),
+      TranslationUpdate(
+        section: "General",
         key: "cancel",
-        assignments: [ValueAssignment(language: "de", form: nil, text: "AbbrechenNeu")]
+        assignments: [
+          ValueAssignment(language: "en", form: nil, text: "CancelUpdated"),
+          ValueAssignment(language: "de", form: nil, text: "AbbrechenNeu")
+        ]
       )
     ])
 
-    XCTAssertEqual(result.items.first?.rowIndex, 4) // canonical English row
-    XCTAssertEqual(writer.batchEdits, [SheetBatchEdit(
-      sheetTab: "de_DE_German",
-      startRow: 3, // German cancel row
-      startColumn: 4,
-      rows: [["AbbrechenNeu"]],
-      mode: .writeOnly
-    )])
+    XCTAssertEqual(result.items.map(\.key), ["save", "cancel"])
+    XCTAssertEqual(result.items.map(\.rowIndex), [2, 4]) // canonical English rows
+    XCTAssertEqual(writer.batchEdits, [
+      SheetBatchEdit(
+        sheetTab: "en_US_English",
+        startRow: 2,
+        startColumn: 4,
+        rows: [["SaveUpdated"]],
+        mode: .writeOnly
+      ),
+      SheetBatchEdit(
+        sheetTab: "de_DE_German",
+        startRow: 2,
+        startColumn: 4,
+        rows: [["SpeichernNeu"]],
+        mode: .writeOnly
+      ),
+      SheetBatchEdit(
+        sheetTab: "en_US_English",
+        startRow: 4,
+        startColumn: 4,
+        rows: [["CancelUpdated"]],
+        mode: .writeOnly
+      ),
+      SheetBatchEdit(
+        sheetTab: "de_DE_German",
+        startRow: 3,
+        startColumn: 4,
+        rows: [["AbbrechenNeu"]],
+        mode: .writeOnly
+      )
+    ])
 
     let json = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(result)) as? [String: Any])
     let items = try XCTUnwrap(json["items"] as? [[String: Any]])
+    XCTAssertEqual(items.count, 2)
     XCTAssertEqual(items.first?["cellsUpdated"] as? [[String: AnyHashable]], [
+      ["tab": "en_US_English", "row": 2, "column": "D", "form": "one"],
+      ["tab": "de_DE_German", "row": 2, "column": "D", "form": "one"]
+    ])
+    XCTAssertEqual(items.last?["cellsUpdated"] as? [[String: AnyHashable]], [
+      ["tab": "en_US_English", "row": 4, "column": "D", "form": "one"],
       ["tab": "de_DE_German", "row": 3, "column": "D", "form": "one"]
     ])
   }
