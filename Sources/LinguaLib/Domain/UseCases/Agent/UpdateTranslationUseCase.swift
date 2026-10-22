@@ -23,6 +23,7 @@ public struct UpdatedTranslation: Encodable {
 
 public struct UpdatedCell: Encodable {
   public let tab: String
+  public let row: Int         // 1-based row in this tab
   public let column: String   // letter, e.g. "D"
   public let form: String     // resolved plural form
 }
@@ -135,6 +136,7 @@ public struct UpdateTranslationUseCase: UpdatingTranslation {
         )
         cellsUpdated.append(UpdatedCell(
           tab: sheet.language,
+          row: sheet.entries[offset].sheetRow,
           column: GoogleSheetsWriter.columnLetters(forIndex: column),
           form: form
         ))
@@ -218,6 +220,7 @@ public struct UpdateTranslationUseCase: UpdatingTranslation {
           ))
           cells.append(UpdatedCell(
             tab: sheet.language,
+            row: sheet.entries[offset].sheetRow,
             column: GoogleSheetsWriter.columnLetters(forIndex: column),
             form: form
           ))

@@ -312,6 +312,11 @@ final class UpdateTranslationUseCaseTests: XCTestCase {
     XCTAssertEqual(cell.row, 3) // German cancel row
     XCTAssertEqual(cell.col, 4)
     XCTAssertEqual(cell.value, "AbbrechenNeu")
+
+    let json = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(result)) as? [String: Any])
+    XCTAssertEqual(json["cellsUpdated"] as? [[String: AnyHashable]], [
+      ["tab": "de_DE_German", "row": 3, "column": "D", "form": "one"]
+    ])
   }
 
   func test_updateBatch_writesToMatchingKeyRow_whenTabsHaveDifferentBlankRows() async throws {
@@ -339,6 +344,12 @@ final class UpdateTranslationUseCaseTests: XCTestCase {
       rows: [["AbbrechenNeu"]],
       mode: .writeOnly
     )])
+
+    let json = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(result)) as? [String: Any])
+    let items = try XCTUnwrap(json["items"] as? [[String: Any]])
+    XCTAssertEqual(items.first?["cellsUpdated"] as? [[String: AnyHashable]], [
+      ["tab": "de_DE_German", "row": 3, "column": "D", "form": "one"]
+    ])
   }
 
   // MARK: - Helpers
